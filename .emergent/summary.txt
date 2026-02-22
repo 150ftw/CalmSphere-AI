@@ -1,0 +1,173 @@
+<analysis>An analysis of the user's request, the agent's actions, and the current state of the project has been completed. The following is a handover summary for the next agent.
+
+**original_problem_statement:**
+The user wants to build **CalmSphere AI**, a web-based mental health and well-being assistant for college students, aligned with SDG-3.
+
+**PRODUCT REQUIREMENTS:**
+1.  **User Roles:**
+    *   **Student User:** Secure registration/login, onboarding, AI chat, mental-health self-assessments (PHQ-9, GAD-7, stress scale), mood logging, viewing personal history/graphs, and receiving tailored self-help modules.
+    *   **Counselor/Admin User:** Secure login to an anonymized dashboard showing aggregated analytics (assessment scores, mood trends, common concerns) and a configuration panel for crisis contacts.
+2.  **Core Intelligence:**
+    *   An LLM-powered chat with a safety layer to detect high-risk conversations (e.g., self-harm) and provide immediate crisis resources.
+    *   A content-selection engine that uses assessment scores, mood, and conversation intent to provide adaptive support (e.g., breathing exercises, CBT-style prompts).
+3.  **Authentication:**
+    *   The user initially agreed to JWT-based authentication.
+    *   Then requested a 2-Factor Authentication (Email + SMS OTP) system.
+    *   **Finally, the user made a critical change to discard all previous authentication work and implement a Sign in with Google (Google OAuth) flow.**
+4.  **Indian Localization:**
+    *   All crisis hotlines, emergency numbers, and cultural references must be adapted for an Indian audience. (e.g., KIRAN helpline: 1800-599-0019, Emergency: 112).
+5.  **Additional Features Requested:**
+    *   Appointment booking system.
+    *   Journaling system.
+    *   Anonymous community forums.
+    *   Smart insights and predictive analytics.
+    *   Integrations (Calendar sync, etc.).
+    *   Multi-language support (Hindi).
+    *   Gamification elements.
+    *   Advanced crisis detection and safety planning.
+    *   SMS-based support (WhatsApp/SMS bot).
+    *   Mental health education hub.
+
+**User's preferred language**: English
+
+**what currently exists?**
+A full-stack application foundation has been built using FastAPI, React, and MongoDB.
+-   **Backend:** Includes models and API endpoint stubs for assessments (PHQ-9, GAD-7), mood tracking, user profiles, and newly added features like journaling, appointments, and community posts. Indian-specific crisis hotlines have been integrated into the risk engine. An incomplete Google OAuth implementation is present.
+-   **Frontend:** A multi-page React application exists with pages for Landing, Dashboard, Chat, Assessments, Mood Logging, and placeholders for new features (Journal, Community, Appointments, Insights). The UI has been updated to reflect Indian localization. The authentication pages (Login, Register, Forgot Password) are based on the old, now-obsolete email/OTP system.
+
+**Last working item**:
+-   **Last item agent was working:** The agent was performing a major refactor to replace the entire custom email/password/OTP authentication system with Google OAuth, as per the user's latest request. It had received the integration playbook, created the necessary backend files for Google Auth (, ), and was in the process of removing the old, obsolete authentication endpoints from .
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** both
+-   **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+-   **Issue 1:** The authentication system is currently broken due to the incomplete migration from email/OTP to Google OAuth. The backend has partially introduced Google Auth, but the old code still exists and the frontend is not yet updated. This is the highest priority issue.
+
+**Issues Detail:**
+-   **Issue 1:**
+    -   **Attempted fixes:** The agent correctly identified the need to switch to Google OAuth. It created new backend files but was interrupted before it could fully remove the old code and refactor the frontend.
+    -   **Next debug checklist:**
+        1.  Delete the obsolete authentication endpoints (register, login, verify-otp, forgot-password, reset-password) from . The agent has already identified these are between lines 111 and 299.
+        2.  Refactor the frontend to remove the , , and  pages.
+        3.  Create a single, unified login page that features only a Sign in with Google button.
+        4.  Update  and  to handle the Google OAuth flow (redirecting to  and handling the callback).
+        5.  Ensure the  is correctly applied to all protected backend routes.
+    -   **Why fix this issue and what will be achieved with the fix?** This will fix the broken authentication system and align the application with the user's explicit final requirement for Google-based login, making the app usable again.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** both
+    -   **Blocked on other issue:** None.
+
+**In progress Task List**:
+-   **Task 1:** Complete the migration to Google OAuth
+    -   **Where to resume:** Resume in  by deleting the block of old authentication endpoints. Then, move to the frontend to refactor the login/registration flow.
+    -   **What will be achieved with this?** A fully functional and simplified authentication system based on Google OAuth.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** both
+    -   **Blocked on something:** None
+
+**Upcoming and Future Tasks**
+**Upcoming Tasks:**
+-   **P0: Implement Frontend for New Features:** Create the UI and logic for the already scaffolded backend features: Appointments, Journal, Community, and Insights.
+-   **P1: Predictive Analytics:** Implement the backend logic for crisis prediction and user wellness trends.
+-   **P1: Peer Support Matching:** Develop the algorithm and UI for connecting users anonymously.
+-   **P1: Professional Network:** Build the marketplace for users to find and connect with therapists.
+-   **P2: Gamification:** Add streaks, badges, and achievements to the user dashboard.
+-   **P2: Advanced Crisis Detection & Safety Planning:** Enhance the risk engine and add a UI for users to create personalized safety plans.
+
+**Future Tasks:**
+-   SMS/WhatsApp Bot integration.
+-   Mental Health Education Hub with courses and resources.
+-   Full multi-language support (Hindi UI and content).
+
+**Completed work in this session**
+-   Initial scaffolding of the full-stack app with a calming UI design.
+-   Implementation of core backend models and API stubs for assessments, mood logs, and user profiles.
+-   **Indian Localization:** Successfully updated crisis hotlines (KIRAN, 112), disclaimers, and contextual text across the application to target an Indian audience.
+-   Scaffolding for new features: Created backend models and API routes for Appointments, Journaling, and Community features.
+-   Created and debugged a complete email/password and 2FA (OTP) system, which has since been marked for deprecation.
+-   Created and debugged a Forgot Password flow, also now deprecated.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Backend:** FastAPI
+-   **Frontend:** React (with hooks and context)
+-   **Database:** MongoDB
+-   **Authentication:** Migrating from a custom JWT + OTP system to **Google OAuth**.
+-   **Integrations:** OpenAI (for chat), Emergent-managed Google Auth.
+
+**key DB schema**
+-   **users:** uid=0(root) gid=0(root) groups=0(root), , , , , , . (Note:  and  are now deprecated).
+-   **assessment_results:** ,  (PHQ-9, GAD-7), , , .
+-   **mood_entries:** , , , , .
+-   **journal_entries:** , , , , .
+-   **appointments:** , , , , .
+-   **community_posts:** , , , , , .
+
+**All files of reference**
+-   : The main application file, currently in a transient state as old auth routes are being removed and new ones are being integrated.
+-   : Contains the core logic for handling the Google OAuth2 flow.
+-   : The Starlette middleware to protect endpoints by verifying the Google-issued JWT.
+-   , : These files contain the deprecated email/password/OTP UI and must be replaced.
+-   : Manages global auth state and needs to be rewritten to support the Google OAuth flow.
+-   : The playbook guiding the Google Auth implementation.
+
+**Areas that need refactoring**:
+-   **Entire Authentication Flow:** The most critical area. All frontend and backend code related to email/password registration, login, OTP, and password reset needs to be stripped out and replaced with the Google OAuth client flow. This includes deleting several pages (, , ) and creating a new simplified login component.
+
+**key api endpoints**
+-   : Initiates the Google OAuth flow.
+-   : The endpoint Google redirects to after user consent. Exchanges the code for a token.
+-   : Clears the user's session.
+-   : A protected endpoint to get the current user's data.
+-   (Endpoints to be deleted): , , , , .
+
+**Critical Info for New Agent**
+The most important information is the **user-mandated pivot from a custom email/OTP system to Google OAuth**. A significant amount of the previous work and debugging history is related to the old system and is now obsolete. Your primary task is to complete this migration. Do not attempt to fix or revive the old OTP system. Start by removing the legacy code from  and then refactor the frontend to use a simple Sign in with Google button.
+
+**documents and test reports created in this job**
+-    (Now obsolete)
+-    (Contains the playbook for Google Auth, still relevant)
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User:** I don't want OTP login. Replace it completely with a Google login button that takes the user to Google's sign-in page.
+    -   *Status: In Progress.* The agent started this migration.
+2.  **User:** There's no OTP code being sent to my email or phone.
+    -   *Status: Resolved (but now irrelevant).* The agent fixed the testing mode, but this entire feature is now being removed.
+3.  **User:** The OTP says invalid token after I enter it.
+    -   *Status: Resolved (but now irrelevant).* The agent fixed a JWT signature verification issue caused by the  load order.
+4.  **User:** The OTP testing mode isn't working from bash.
+    -   *Status: Resolved (but now irrelevant).*
+5.  **User:** The OTP isn't working, I'm not getting any.
+    -   *Status: Resolved (but now irrelevant).*
+6.  **User:** Please fully deploy the OTP integration with Twilio or SendGrid.
+    -   *Status: Obsolete.* The agent implemented this before the user pivoted to Google Auth.
+7.  **User:** Add a forgot password feature.
+    -   *Status: Obsolete.* The agent implemented this, but it's being removed with the switch to Google Auth.
+8.  **User:** I'm not getting an OTP on email or phone.
+    -   *Status: Resolved (but now irrelevant).*
+9.  **User:** Select features #1, 5, 7, 8, 11, 16, 17, 21, 22 for implementation and add 2FA with email/SMS.
+    -   *Status: In Progress (partially superseded).* The agent began implementing these but was redirected to focus on the auth change.
+10. **User:** Current version works fine.
+    -   *Status: Outdated.* This was before the major feature requests and authentication changes.
+
+**Project Health Check:**
+-   **Broken:** The application is not in a runnable state due to the incomplete authentication refactor. The frontend expects an email/password system that the backend is being changed to no longer support.
+
+**3rd Party Integrations**
+-   **OpenAI GPT-5.2:** Uses Emergent LLM Key (for chat feature).
+-   **Emergent-managed Google Auth:** For user authentication.
+-   **MSG91 & SendGrid:** Integrated for the deprecated OTP system. The dependencies (, ) are installed but are no longer needed. They can be removed to clean up the project.
+
+**Testing status**
+-   **Testing agent used after significant changes:** NO (not since the Google Auth migration started).
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** None.
+-   **Known regressions:** The entire login/registration flow is broken.
+
+**What agent forgot to execute**
+The agent was in the middle of a multi-step refactoring process. It correctly identified the block of code to delete from  but was interrupted before it could execute the deletion. It also had not yet started the corresponding, and equally critical, refactoring on the frontend.</analysis>

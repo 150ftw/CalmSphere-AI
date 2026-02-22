@@ -1,0 +1,204 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "CalmSphere AI",
+      "archetype": "Organic & Earthy (The 'Grounded Sanctuary')",
+      "tone": "Empathetic, Safe, Non-Clinical, Human-First",
+      "core_principle": "Calm Technology: Information without overwhelm. Design that breathes."
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Fraunces, serif",
+        "body": "Satoshi, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-5xl md:text-7xl font-light tracking-tight leading-[1.1]",
+        "h2": "text-4xl md:text-5xl font-normal tracking-tight",
+        "h3": "text-2xl md:text-3xl font-medium",
+        "body_lg": "text-lg md:text-xl leading-relaxed text-muted-foreground",
+        "body_base": "text-base leading-relaxed text-foreground/90",
+        "caption": "text-sm font-medium tracking-wide uppercase text-muted-foreground/80"
+      },
+      "imports": [
+        "https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=fraunces@300,400,500,600&display=swap"
+      ]
+    },
+    "colors": {
+      "palette": {
+        "background": "#F9F9F7",
+        "foreground": "#1A2F23",
+        "primary": "#4A6C58",
+        "primary_foreground": "#FFFFFF",
+        "secondary": "#E09F7D",
+        "secondary_foreground": "#2A1A10",
+        "accent": "#A4C3D2",
+        "accent_foreground": "#1A2F23",
+        "muted": "#E8E8E4",
+        "muted_foreground": "#6B7C70",
+        "card": "#FFFFFF",
+        "card_foreground": "#1A2F23",
+        "border": "#E2E2DE",
+        "input": "#E2E2DE",
+        "ring": "#4A6C58"
+      },
+      "chart_colors": {
+        "depression": "#E09F7D",
+        "anxiety": "#A4C3D2",
+        "stress": "#D4A373",
+        "wellness": "#4A6C58",
+        "neutral": "#E8E8E4"
+      },
+      "gradients": {
+        "hero": "linear-gradient(135deg, #F9F9F7 0%, #E8E8E4 100%)",
+        "calm_glow": "radial-gradient(circle at 50% 50%, rgba(164, 195, 210, 0.2) 0%, rgba(249, 249, 247, 0) 70%)",
+        "warm_glow": "radial-gradient(circle at 50% 50%, rgba(224, 159, 125, 0.15) 0%, rgba(249, 249, 247, 0) 70%)"
+      }
+    },
+    "spacing": {
+      "container_padding": "px-6 md:px-12 lg:px-24",
+      "section_gap": "gap-16 md:gap-32",
+      "element_gap": "gap-4 md:gap-8",
+      "border_radius": {
+        "sm": "rounded-lg",
+        "md": "rounded-xl",
+        "lg": "rounded-2xl",
+        "xl": "rounded-3xl",
+        "full": "rounded-full"
+      }
+    },
+    "visual_enhancers": {
+      "shadows": {
+        "soft": "0 4px 20px -2px rgba(74, 108, 88, 0.05)",
+        "float": "0 20px 40px -4px rgba(74, 108, 88, 0.08)",
+        "inner": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.02)"
+      },
+      "borders": {
+        "subtle": "border border-border/60",
+        "highlight": "border border-primary/20"
+      },
+      "glassmorphism": {
+        "default": "bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm",
+        "heavy": "bg-white/80 backdrop-blur-2xl border border-white/50 shadow-md"
+      },
+      "texture": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E\")"
+    },
+    "layout_strategies": {
+      "marketing": {
+        "grid": "Bento Grid (Mode A)",
+        "alignment": "Asymmetric, Organic",
+        "container": "max-w-7xl mx-auto"
+      },
+      "dashboard": {
+        "grid": "High Density Grid (Mode B)",
+        "style": "Soft Card (Rounded-2xl, Flat, Subtle Border)",
+        "sidebar": "Floating Glass Sidebar"
+      },
+      "chat": {
+        "style": "Bubble-free or Soft-Bubble",
+        "background": "Minimalist with subtle organic shapes"
+      }
+    },
+    "motion": {
+      "principles": "Slow, Breathing, Fluid. No abrupt cuts.",
+      "transitions": "transition-all duration-500 ease-out",
+      "animation_classes": {
+        "fade_in": "animate-in fade-in duration-700",
+        "slide_up": "animate-in slide-in-from-bottom-8 duration-700",
+        "pulse_slow": "animate-pulse duration-[3000ms]"
+      }
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-8 py-6 text-lg font-medium shadow-soft transition-transform hover:scale-[1.02] active:scale-[0.98]",
+      "secondary": "bg-secondary/20 text-secondary-foreground hover:bg-secondary/30 rounded-full px-6 py-4 font-medium",
+      "ghost": "hover:bg-muted/50 text-muted-foreground hover:text-foreground rounded-full px-4 py-2"
+    },
+    "cards": {
+      "base": "bg-card text-card-foreground rounded-2xl border border-border/40 shadow-soft p-6 md:p-8 relative overflow-hidden group hover:border-primary/20 transition-colors",
+      "interactive": "cursor-pointer hover:shadow-float hover:-translate-y-1 transition-all duration-300"
+    },
+    "inputs": {
+      "base": "bg-white/50 border-border/60 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 rounded-xl h-12 px-4 transition-all"
+    },
+    "charts": {
+      "library": "Recharts (via Shadcn)",
+      "style": "Minimalist, no grid lines, soft gradients, rounded bars",
+      "config": {
+        "strokeWidth": 3,
+        "dot": false,
+        "activeDot": { "r": 6, "strokeWidth": 0 }
+      }
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_main": {
+        "url": "https://images.unsplash.com/photo-1763890498949-efd5d4acb8ac?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwxfHxwZWFjZWZ1bCUyMGNvbGxlZ2UlMjBzdHVkZW50JTIwb3V0ZG9vcnN8ZW58MHx8fHwxNzY4NDYyODQwfDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Student reading peacefully under a tree",
+        "usage": "Landing Page Hero"
+      },
+      "abstract_bg": {
+        "url": "https://images.unsplash.com/photo-1762652345565-e38e420b6f30?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTB8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMG9yZ2FuaWMlMjBzaGFwZXMlMjBzb2Z0JTIwY29sb3JzfGVufDB8fHx8MTc2ODQ2Mjg0Mnww&ixlib=rb-4.1.0&q=85",
+        "alt": "Soft pastel organic spheres",
+        "usage": "AI Chat Background / Feature Cards"
+      },
+      "meditation_bg": {
+        "url": "https://images.unsplash.com/photo-1768225802068-a621154bab78?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwyfHxjYWxtJTIwbmF0dXJlJTIwbGFuZHNjYXBlJTIwbWluaW1hbGlzdHxlbnwwfHx8fDE3Njg0NjI4NDN8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Tall grass in foggy water",
+        "usage": "Breathing Exercise / Crisis Page Background"
+      },
+      "community_img": {
+        "url": "https://images.unsplash.com/photo-1763890499068-baf540cacf3a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHw0fHxwZWFjZWZ1bCUyMGNvbGxlZ2UlMjBzdHVkZW50JTIwb3V0ZG9vcnN8ZW58MHx8fHwxNzY4NDYyODQwfDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Students walking under cherry trees",
+        "usage": "Community/About Section"
+      }
+    },
+    "icons": {
+      "library": "Lucide React",
+      "style": "Stroke width 1.5px (Light/Elegant)",
+      "mapping": {
+        "mood": "Smile, Frown, Meh",
+        "analytics": "Activity, BarChart3, PieChart",
+        "chat": "MessageCircleHeart, Sparkles",
+        "crisis": "LifeBuoy, Phone"
+      }
+    }
+  },
+  "instructions_to_main_agent": {
+    "general": [
+      "IMPLEMENT LIGHT MODE ONLY. Do not implement dark mode unless explicitly requested as a toggle, but default must be light.",
+      "Use the 'Fraunces' font for all Headings (h1-h3). Import it from Fontshare or Google Fonts.",
+      "Use 'Satoshi' or 'Inter' (if Satoshi unavailable) for body text.",
+      "Apply the 'noise' texture overlay to the main background to give it a paper-like feel.",
+      "For the Chat Interface: Do not use standard 'iMessage' bubbles. Use a more open, conversational layout where the AI text flows naturally, perhaps with a soft background tint.",
+      "For Analytics: Use the pastel chart colors defined. Do not use harsh reds or greens. Even 'danger' states should be a soft terracotta, not bright red."
+    ],
+    "specific_pages": {
+      "landing": "Use the 'Hero Main' image with a soft gradient overlay. Text should be 'Deep Forest' color. Use a 'Bento' grid for features.",
+      "dashboard": "Use a 'Glass Sidebar' (white/60 blur). Cards should be white with very subtle shadows. Use the 'Abstract BG' as a subtle watermark.",
+      "assessment": "Make it feel like a book or a journal. One question per screen (Typeform style) with smooth transitions."
+    }
+  },
+  "universal_guidelines": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Create new components that match the style and conventions of existing components when needed",
+    "Examine existing components to understand the project's component patterns before creating new ones",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use sonner for toasts. Sonner component are located in /app/src/components/ui/sonner.tsx"
+  ]
+}
