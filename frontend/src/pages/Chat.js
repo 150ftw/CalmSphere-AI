@@ -22,6 +22,30 @@ export default function Chat() {
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(window.speechSynthesis);
+  const selectedVoiceRef = useRef(null);
+
+  // Initialize Voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = synthesisRef.current.getVoices();
+      if (voices.length > 0 && !selectedVoiceRef.current) {
+        // Strictly prioritize premium female voices for the highest quality and consistency
+        const premiumFemale = voices.find(v => v.name === 'Google US English' || v.name === 'Samantha') ||
+                            voices.find(v => v.name.includes('Female') || v.name.includes('Victoria') || v.name.includes('Tessa')) ||
+                            voices.find(v => v.lang === 'en-US' && (v.name.includes('Natural') || v.name.includes('Online'))) ||
+                            voices.find(v => v.lang.startsWith('en')) || 
+                            voices[0];
+        
+        selectedVoiceRef.current = premiumFemale;
+        console.log("Voice locked to:", premiumFemale.name);
+      }
+    };
+
+    loadVoices();
+    if (synthesisRef.current.onvoiceschanged !== undefined) {
+      synthesisRef.current.onvoiceschanged = loadVoices;
+    }
+  }, []);
 
   useEffect(() => {
     loadMessages();
@@ -140,6 +164,13 @@ export default function Chat() {
 
   const startCall = () => {
     setIsCalling(true);
+    // Initial greeting after a tiny delay to allow voice to lock
+    setTimeout(() => {
+      const greeting = messages.length === 0 
+        ? "Hello, I'm Calmi, your supportive companion. I'm here to listen—what's on your mind today?"
+        : "I'm here. Let's continue our conversation—how are you feeling now?";
+      speakResponse(greeting);
+    }, 800);
   };
 
   const endCall = () => {
@@ -151,40 +182,58 @@ export default function Chat() {
   };
 
   const speakResponse = (text) => {
-    // Pause recognition while bot is speaking to avoid feedback
-    if (recognitionRef.current) recognitionRef.current.stop();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
+    if (!text) return;
     
-    // Select a warm, human-like voice if available
-    const voices = synthesisRef.current.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Natural')) || voices[0];
-    if (preferredVoice) utterance.voice = preferredVoice;
+    // 1. Cancel any existing speech and stop listening
+    synthesisRef.current.cancel();
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch(e) {}
+    }
 
-    utterance.onstart = () => {
-      setIsListening(false);
-    };
+    // 2. Split text into manageable chunks (sentences/phrases)
+    const chunks = text.match(/[^.!?]+[.!?]+|[^.!?]+/g) || [text];
+    let currentChunk = 0;
 
-    utterance.onend = () => {
-      if (isCalling && !isMuted) {
+    const speakNextChunk = () => {
+      if (currentChunk >= chunks.length) {
+        // All done, resume listening after a brief safety delay
         setTimeout(() => {
-          try {
-            recognitionRef.current?.start();
-          } catch (e) {
-            console.log("Recognition already started or failed:", e);
+          if (isCalling && !isMuted) {
+            try { 
+              if (recognitionRef.current) recognitionRef.current.start(); 
+            } catch(e) {
+              console.log("Recognition restart skipped:", e);
+            }
           }
-        }, 300);
+        }, 500);
+        return;
       }
+
+      const utterance = new SpeechSynthesisUtterance(chunks[currentChunk].trim());
+      
+      // 3. Use the locked consistent voice
+      if (selectedVoiceRef.current) {
+        utterance.voice = selectedVoiceRef.current;
+      }
+      
+      utterance.rate = 0.95; 
+      utterance.pitch = 1.0;
+
+      utterance.onend = () => {
+        currentChunk++;
+        speakNextChunk();
+      };
+
+      utterance.onerror = (e) => {
+        console.error("Chunk Speech Error:", e);
+        currentChunk++;
+        speakNextChunk();
+      };
+
+      synthesisRef.current.speak(utterance);
     };
 
-    utterance.onerror = (e) => {
-      console.error("Speech Synthesis Error:", e);
-      if (isCalling) recognitionRef.current?.start();
-    };
-
-    synthesisRef.current.speak(utterance);
+    speakNextChunk();
   };
 
   const handleKeyPress = (e) => {
@@ -209,7 +258,7 @@ export default function Chat() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="font-fraunces text-xl font-medium">CalmSphere AI</h1>
+            <h1 className="font-fraunces text-xl font-medium">Calmi <span className="text-sm font-normal opacity-70">by CalmSphere AI</span></h1>
             <p className="text-xs text-muted-foreground">Your supportive companion</p>
           </div>
         </div>
@@ -251,7 +300,7 @@ export default function Chat() {
           {messages.length === 0 && (
             <div className="text-center py-12">
               <MessageCircleHeart className="w-16 h-16 text-primary/30 mx-auto mb-4" strokeWidth={1.5} />
-              <h3 className="font-fraunces text-2xl font-medium mb-2">Start Your Conversation</h3>
+              <h3 className="font-fraunces text-2xl font-medium mb-2">Talk to Calmi</h3>
               <p className="text-muted-foreground">
                 Share what's on your mind. I'm here to listen and support you.
               </p>
@@ -338,7 +387,7 @@ export default function Chat() {
             </div>
             
             <p className="voice-status-text min-h-[3rem]">
-              {loading ? "CalmSphere is thinking..." : (transcript || (isListening ? "I'm listening..." : (isCalling && !isListening ? "Initializing..." : "Speaking...")))}
+              {loading ? "Calmi is thinking..." : (transcript || (isListening ? "I'm listening..." : (isCalling && !isListening ? "Initializing..." : "Speaking...")))}
             </p>
             <p className="voice-subtext mt-4">
               {isMuted ? "Microphone is muted" : "Speak naturally, I can hear you."}

@@ -64,7 +64,7 @@ export default function Landing() {
             </div>
             <h3 className="font-fraunces text-2xl font-medium mb-2">Empathetic AI Chat</h3>
             <p className="text-muted-foreground leading-relaxed">
-              Talk to CalmSphere AI anytime. Get supportive, judgment-free conversations when you need them most.
+              Talk to Calmi anytime. Get supportive, judgment-free conversations when you need them most.
             </p>
           </div>
 

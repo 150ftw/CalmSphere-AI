@@ -95,7 +95,7 @@ export default function Dashboard() {
             className="bg-primary text-primary-foreground rounded-2xl p-6 shadow-soft hover:shadow-float hover:-translate-y-1 transition-all text-left group"
           >
             <MessageCircleHeart className="w-8 h-8 mb-3 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
-            <h3 className="font-fraunces text-xl font-medium mb-1">Talk to CalmSphere</h3>
+            <h3 className="font-fraunces text-xl font-medium mb-1">Talk to Calmi</h3>
             <p className="text-primary-foreground/80 text-sm">Start a supportive conversation</p>
           </button>
 
