@@ -140,10 +140,25 @@ export default function Chat() {
     const preferredVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Natural')) || voices[0];
     if (preferredVoice) utterance.voice = preferredVoice;
 
+    utterance.onstart = () => {
+      setIsListening(false);
+    };
+
     utterance.onend = () => {
       if (isCalling && !isMuted) {
-        recognitionRef.current.start();
+        setTimeout(() => {
+          try {
+            recognitionRef.current?.start();
+          } catch (e) {
+            console.log("Recognition already started or failed:", e);
+          }
+        }, 300);
       }
+    };
+
+    utterance.onerror = (e) => {
+      console.error("Speech Synthesis Error:", e);
+      if (isCalling) recognitionRef.current?.start();
     };
 
     synthesisRef.current.speak(utterance);
@@ -280,12 +295,30 @@ export default function Chat() {
             </div>
           </div>
 
-          <div className="max-w-md px-8 text-center">
-            <p className="voice-status-text">
-              {loading ? "CalmSphere is thinking..." : isListening ? (transcript || "I'm listening...") : "Speaking..."}
+          <div className="max-w-md px-8 text-center mt-8">
+            <div className="mb-6 h-8">
+              {isListening && (
+                <div className="flex justify-center gap-1 h-full items-end">
+                  {[...Array(5)].map((_, i) => (
+                    <div 
+                      key={i}
+                      className="w-1 bg-primary rounded-full animate-voice-bar"
+                      style={{ 
+                        height: '40%', 
+                        animationDelay: `${i * 0.1}s`,
+                        animationDuration: `${0.5 + Math.random()}s`
+                      }}
+                    ></div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <p className="voice-status-text min-h-[3rem]">
+              {loading ? "CalmSphere is thinking..." : (transcript || (isListening ? "I'm listening..." : "Speaking..."))}
             </p>
-            <p className="voice-subtext">
-              Speak naturally, I can hear you.
+            <p className="voice-subtext mt-4">
+              {isMuted ? "Microphone is muted" : "Speak naturally, I can hear you."}
             </p>
           </div>
 
