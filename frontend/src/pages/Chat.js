@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getChatMessages, sendMessage as sendMessageApi } from '../api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, Send, AlertCircle, LifeBuoy } from 'lucide-react';
+import { ArrowLeft, Send, AlertCircle, Mic, MicOff, Phone, PhoneOff, Volume2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Chat() {
@@ -14,6 +14,14 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [showCrisisResources, setShowCrisisResources] = useState(false);
   const messagesEndRef = useRef(null);
+  
+  // Voice State
+  const [isCalling, setIsCalling] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const recognitionRef = useRef(null);
+  const synthesisRef = useRef(window.speechSynthesis);
 
   useEffect(() => {
     loadMessages();
@@ -36,18 +44,23 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSend = async () => {
-    if (!inputMessage.trim() || loading) return;
+  const handleSend = async (messageOverride = null) => {
+    const messageToSend = messageOverride || inputMessage;
+    if (!messageToSend.trim() || loading) return;
 
-    const userMsg = inputMessage;
-    setInputMessage('');
+    if (!messageOverride) setInputMessage('');
     setLoading(true);
 
     try {
-      const response = await sendMessageApi(sessionId, userMsg);
+      const response = await sendMessageApi(sessionId, messageToSend);
       
       // Add user message and bot response
       await loadMessages();
+      
+      // If in voice mode, speak the response
+      if (isCalling && !isMuted) {
+        speakResponse(response.data.message.content);
+      }
       
       // Show crisis resources if needed
       if (response.data.show_crisis_resources) {
@@ -58,6 +71,82 @@ export default function Chat() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Voice Logic
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        const current = event.resultIndex;
+        const transcriptText = event.results[current][0].transcript;
+        setTranscript(transcriptText);
+
+        if (event.results[current].isFinal) {
+          handleSend(transcriptText);
+          setTranscript('');
+        }
+      };
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => {
+        setIsListening(false);
+        // Restart if still calling and not speaking
+        if (isCalling && !synthesisRef.current.speaking) {
+          recognition.start();
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      synthesisRef.current.cancel();
+    };
+  }, [isCalling, sessionId]);
+
+  const startCall = () => {
+    setIsCalling(true);
+    if (recognitionRef.current) {
+      recognitionRef.current.start();
+    }
+    toast.success('Voice session started');
+  };
+
+  const endCall = () => {
+    setIsCalling(false);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    synthesisRef.current.cancel();
+  };
+
+  const speakResponse = (text) => {
+    // Pause recognition while bot is speaking to avoid feedback
+    if (recognitionRef.current) recognitionRef.current.stop();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    
+    // Select a warm, human-like voice if available
+    const voices = synthesisRef.current.getVoices();
+    const preferredVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Natural')) || voices[0];
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    utterance.onend = () => {
+      if (isCalling && !isMuted) {
+        recognitionRef.current.start();
+      }
+    };
+
+    synthesisRef.current.speak(utterance);
   };
 
   const handleKeyPress = (e) => {
@@ -170,9 +259,63 @@ export default function Chat() {
         </div>
       </div>
 
+      {/* Voice Overlay */}
+      {isCalling && (
+        <div className="voice-overlay">
+          <div className="aura-container">
+            <div className="aura-circle"></div>
+            <div className="aura-circle"></div>
+            <div className="aura-circle"></div>
+            <div className="flex flex-col items-center">
+              <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <Volume2 className="w-12 h-12 text-primary animate-pulse" />
+              </div>
+              {isListening && (
+                <div className="listening-indicator">
+                  <div className="listening-dot" style={{ animationDelay: '0s' }}></div>
+                  <div className="listening-dot" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="listening-dot" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="max-w-md px-8 text-center">
+            <p className="voice-status-text">
+              {loading ? "CalmSphere is thinking..." : isListening ? (transcript || "I'm listening...") : "Speaking..."}
+            </p>
+            <p className="voice-subtext">
+              Speak naturally, I can hear you.
+            </p>
+          </div>
+
+          <div className="controls-container">
+            <button 
+              onClick={() => setIsMuted(!isMuted)}
+              className={`control-btn btn-mute ${isMuted ? 'active' : ''}`}
+            >
+              {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+            </button>
+            <button 
+              onClick={endCall}
+              className="control-btn btn-end"
+            >
+              <PhoneOff className="w-8 h-8" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="border-t border-border/40 bg-card/50 backdrop-blur-xl px-6 py-4">
         <div className="max-w-4xl mx-auto flex gap-3">
+          <Button
+            onClick={startCall}
+            disabled={loading}
+            className="bg-secondary/10 text-secondary hover:bg-secondary/20 rounded-full w-12 h-12 p-0 flex items-center justify-center transition-all"
+          >
+            <Mic className="w-5 h-5" />
+          </Button>
           <Input
             data-testid="chat-input"
             value={inputMessage}
@@ -184,7 +327,7 @@ export default function Chat() {
           />
           <Button
             data-testid="send-message-btn"
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={loading || !inputMessage.trim()}
             className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-12 h-12 p-0 flex items-center justify-center shadow-soft hover:shadow-float transition-all disabled:opacity-50"
           >

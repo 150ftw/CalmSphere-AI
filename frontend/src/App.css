@@ -1,3 +1,132 @@
-.App {
-  min-height: 100vh;
+.voice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(1.05); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.aura-container {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.aura-circle {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: var(--primary);
+  border-radius: 50%;
+  opacity: 0.15;
+  animation: pulse 3s infinite ease-in-out;
+}
+
+.aura-circle:nth-child(2) {
+  width: 180px;
+  height: 180px;
+  animation-delay: 0.5s;
+  opacity: 0.1;
+}
+
+.aura-circle:nth-child(3) {
+  width: 210px;
+  height: 210px;
+  animation-delay: 1s;
+  opacity: 0.05;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.2; }
+  50% { transform: scale(1.5); opacity: 0.05; }
+  100% { transform: scale(1); opacity: 0.2; }
+}
+
+.voice-status-text {
+  font-family: 'Fraunces', serif;
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.voice-subtext {
+  font-size: 0.875rem;
+  color: #6B7280;
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.controls-container {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.control-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.control-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.btn-end {
+  background: #EF4444;
+  color: white;
+}
+
+.btn-mute {
+  background: white;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+}
+
+.btn-mute.active {
+  background: #F3F4F6;
+  color: #EF4444;
+}
+
+.listening-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 4px;
+}
+
+.listening-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--primary);
+  border-radius: 50%;
+  animation: dotBounce 1s infinite ease-in-out;
+}
+
+@keyframes dotBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
