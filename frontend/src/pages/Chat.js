@@ -20,8 +20,12 @@ export default function Chat() {
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [micLevel, setMicLevel] = useState(0);
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(window.speechSynthesis);
+  const audioContextRef = useRef(null);
+  const analyzerRef = useRef(null);
+  const animationFrameRef = useRef(null);
   const selectedVoiceRef = useRef(null);
 
   // Initialize Voices
@@ -130,6 +134,7 @@ export default function Chat() {
 
       recognition.onstart = () => {
         setIsListening(true);
+        startMicMonitoring();
         console.log("Voice recognition started successfully");
       };
       
@@ -159,7 +164,7 @@ export default function Chat() {
       };
 
       recognitionRef.current = recognition;
-      recognition.start();
+      // Removed auto-start from useEffect to allow startCall to handle it
     } catch (error) {
       console.error("Failed to start recognition:", error);
       setIsCalling(false);
@@ -168,18 +173,65 @@ export default function Chat() {
     return () => {
       if (recognitionRef.current) recognitionRef.current.stop();
       synthesisRef.current.cancel();
+      stopMicMonitoring();
     };
   }, [isCalling, sessionId, isMuted]);
 
+  const startMicMonitoring = async () => {
+    try {
+      if (!window.AudioContext && !window.webkitAudioContext) return;
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioContextRef.current = new AudioContext();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      analyzerRef.current = audioContextRef.current.createAnalyser();
+      analyzerRef.current.fftSize = 256;
+      source.connect(analyzerRef.current);
+
+      const bufferLength = analyzerRef.current.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const updateLevel = () => {
+        if (!analyzerRef.current) return;
+        analyzerRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        setMicLevel(average);
+        animationFrameRef.current = requestAnimationFrame(updateLevel);
+      };
+
+      updateLevel();
+    } catch (err) {
+      console.error("Mic monitoring failed:", err);
+    }
+  };
+
+  const stopMicMonitoring = () => {
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (audioContextRef.current) audioContextRef.current.close();
+    audioContextRef.current = null;
+    analyzerRef.current = null;
+    setMicLevel(0);
+  };
+
   const startCall = () => {
     setIsCalling(true);
-    // Initial greeting after a tiny delay to allow voice to lock
+    // Explicitly start recognition on user gesture to ensure browser permission
     setTimeout(() => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch(e) { console.log(e); }
+      }
+      
+      // Initial greeting
       const greeting = messages.length === 0 
         ? "Hello, I'm Calmi, your supportive companion. I'm here to listen—what's on your mind today?"
         : "I'm here. Let's continue our conversation—how are you feeling now?";
       speakResponse(greeting);
-    }, 800);
+    }, 100);
   };
 
   const endCall = () => {
@@ -225,13 +277,15 @@ export default function Chat() {
         utterance.voice = selectedVoiceRef.current;
       }
       
-      utterance.rate = 0.95; 
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0; // Force stable volume to prevent dips
+      // 4. Humanizing Inflection: Slight variations to avoid "robotic" monotony
+      utterance.rate = 0.92; // More relaxed conversational pace
+      utterance.pitch = 1.0 + (Math.random() * 0.1 - 0.05); // Tiny +/- 5% pitch shift
+      utterance.volume = 1.0;
 
       utterance.onend = () => {
         currentChunk++;
-        speakNextChunk();
+        // Add a small "natural breath" pause between chunks (sentences)
+        setTimeout(speakNextChunk, 250); 
       };
 
       utterance.onerror = (e) => {
@@ -380,15 +434,14 @@ export default function Chat() {
           <div className="max-w-md px-8 text-center mt-8">
             <div className="mb-6 h-8">
               {isListening && (
-                <div className="flex justify-center gap-1 h-full items-end">
-                  {[...Array(5)].map((_, i) => (
+                <div className="flex justify-center gap-1.5 h-full items-end">
+                  {[...Array(8)].map((_, i) => (
                     <div 
                       key={i}
-                      className="w-1 bg-primary rounded-full animate-voice-bar"
+                      className="w-1.5 bg-primary rounded-full transition-all duration-75"
                       style={{ 
-                        height: '40%', 
-                        animationDelay: `${i * 0.1}s`,
-                        animationDuration: `${0.5 + Math.random()}s`
+                        height: `${Math.max(20, (micLevel * (1 + Math.sin(i * 0.5))) / 1.5)}%`,
+                        opacity: 0.4 + (micLevel / 255)
                       }}
                     ></div>
                   ))}
