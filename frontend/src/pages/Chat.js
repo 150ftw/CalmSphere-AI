@@ -130,13 +130,22 @@ export default function Chat() {
 
       recognition.onstart = () => {
         setIsListening(true);
-        console.log("Voice recognition started");
+        console.log("Voice recognition started successfully");
       };
       
+      // Force start if browser is slow to trigger onstart
+      const forceStartTimeout = setTimeout(() => {
+        if (isCalling && !isListening) {
+          console.log("Forcing listening state due to timeout");
+          setIsListening(true);
+        }
+      }, 3000);
+
       recognition.onerror = (event) => {
+        clearTimeout(forceStartTimeout);
         console.error("Speech Recognition Error:", event.error);
         if (event.error === 'not-allowed') {
-          toast.error("Microphone permission denied.");
+          toast.error("Microphone permission denied. Please check your browser settings.");
           setIsCalling(false);
         }
       };
@@ -218,6 +227,7 @@ export default function Chat() {
       
       utterance.rate = 0.95; 
       utterance.pitch = 1.0;
+      utterance.volume = 1.0; // Force stable volume to prevent dips
 
       utterance.onend = () => {
         currentChunk++;
