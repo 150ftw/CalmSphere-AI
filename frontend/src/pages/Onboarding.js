@@ -187,7 +187,7 @@ export default function Onboarding() {
                   id="consent"
                   className="mt-1 border-primary/20"
                 />
-                <label htmlFor="consent" className="text-[10px] font-bold text-primary/40 tracking-wide leading-relaxed cursor-pointer">
+                <label htmlFor="consent" className="text-[10px] font-bold text-primary/70 tracking-wide leading-relaxed cursor-pointer">
                   I understand that CalmSphere AI is a <span className="text-primary font-black">self-help tool</span> and I acknowledge the crisis protocols.
                 </label>
               </div>

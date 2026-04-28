@@ -148,20 +148,20 @@ export default function Login() {
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6 relative z-10">
             {isRegister && (
               <div className="relative">
-                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/20" />
+                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40" />
                 <Input
                   required
                   autoComplete="new-name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Full Name"
-                  className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic placeholder:text-primary/10 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
+                  className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic text-primary placeholder:text-primary/60 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
                 />
               </div>
             )}
             
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/20" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40" />
               <Input
                 required
                 type="email"
@@ -169,12 +169,12 @@ export default function Login() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="Email Address"
-                className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic placeholder:text-primary/10 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
+                className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic text-primary placeholder:text-primary/60 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
               />
             </div>
 
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/20" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40" />
               <Input
                 required
                 type="password"
@@ -182,7 +182,7 @@ export default function Login() {
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Password"
-                className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic placeholder:text-primary/10 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
+                className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic text-primary placeholder:text-primary/60 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
               />
             </div>
 
@@ -199,7 +199,7 @@ export default function Login() {
           <div className="mt-8 text-center relative z-10">
             <button
               onClick={() => setIsRegister(!isRegister)}
-              className="text-[10px] font-black tracking-widest uppercase text-primary/30 hover:text-primary transition-all underline decoration-primary/10 underline-offset-8"
+              className="text-[10px] font-black tracking-widest uppercase text-primary/70 hover:text-primary transition-all underline decoration-primary/10 underline-offset-8"
             >
               {isRegister ? "Already have an identity? Enter here" : "No identity yet? Begin path here"}
             </button>
@@ -211,7 +211,7 @@ export default function Login() {
             <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
               <ShieldCheck className="w-4 h-4 text-secondary" />
             </div>
-            <p className="text-[9px] font-bold text-primary/40 tracking-wide leading-relaxed">
+            <p className="text-[9px] font-bold text-primary/70 tracking-wide leading-relaxed">
               Your identity is protected by <span className="text-primary font-black">Sovereign Encryption</span>. 
               We never share your personal path with third parties.
             </p>
@@ -221,7 +221,7 @@ export default function Login() {
         <div className="mt-8 text-center">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-3 mx-auto text-[9px] font-black tracking-[0.3em] uppercase text-primary/20 hover:text-primary transition-all group"
+            className="flex items-center gap-3 mx-auto text-[9px] font-black tracking-[0.3em] uppercase text-primary/60 hover:text-primary transition-all group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-2 transition-transform" />
             Return to Horizon
