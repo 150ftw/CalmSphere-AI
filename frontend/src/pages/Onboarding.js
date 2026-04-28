@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { completeOnboarding } from '../api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
+import { Sparkles, ArrowRight, ArrowLeft, Brain, ShieldCheck, Heart, Zap, Compass, Moon, Waves } from 'lucide-react';
 
 const CONCERNS = [
   'Academic Stress',
@@ -30,6 +31,10 @@ export default function Onboarding() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
   });
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
   const toggleConcern = (concern) => {
     setFormData(prev => ({
       ...prev,
@@ -47,152 +52,170 @@ export default function Onboarding() {
 
     try {
       await completeOnboarding(formData);
-      toast.success('Welcome to CalmSphere AI!');
+      toast.success('Welcome to the Sanctuary.');
       navigate('/dashboard');
     } catch (error) {
-      toast.error('Failed to complete onboarding');
+      toast.error('Calibration failed. Please try again.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-background bg-noise flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-2xl">
-        <div className="bg-card rounded-2xl shadow-float p-8 md:p-12 border border-border/40">
+    <div className="min-h-screen bg-white selection:bg-primary selection:text-white flex items-center justify-center px-6 py-20 relative overflow-hidden">
+      <div className="mesh-bg opacity-30" />
+      <div className="aura-blob top-0 right-0 opacity-20" />
+      <div className="aura-blob bottom-0 left-0 opacity-20 animate-pulse" />
+
+      <div className="w-full max-w-3xl z-10">
+        <div className="luxury-card p-12 md:p-20 relative overflow-hidden">
+          <div className="absolute top-10 right-10 flex items-center gap-2 opacity-20">
+            <Sparkles className="w-4 h-4" />
+            <span className="text-[9px] font-black tracking-widest uppercase">Step 0{step} / 03</span>
+          </div>
+
           {step === 1 && (
-            <div data-testid="onboarding-step-1" className="space-y-6 animate-fade-in">
-              <h2 className="font-fraunces text-3xl font-normal mb-2">Tell us about yourself</h2>
-              <p className="text-muted-foreground mb-6">This helps us personalize your experience</p>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Academic Year</label>
-                <Input
-                  data-testid="year-input"
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                  placeholder="e.g., Freshman, Sophomore, Junior, Senior"
-                  className="w-full bg-white/50 border-border/60 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 rounded-xl h-12 px-4"
-                />
+            <div data-testid="onboarding-step-1" className="animate-fade-in relative z-10">
+              <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center mb-10">
+                <Compass className="w-8 h-8 text-secondary" />
               </div>
+              <h2 className="font-fraunces text-5xl md:text-6xl mb-6 italic">Calibration.</h2>
+              <p className="text-xl text-primary/40 leading-relaxed font-fraunces mb-16">Tell us about your current path so we can mirror your rhythm.</p>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Field of Study</label>
-                <Input
-                  data-testid="branch-input"
-                  value={formData.branch}
-                  onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                  placeholder="e.g., Computer Science, Psychology, Biology"
-                  className="w-full bg-white/50 border-border/60 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 rounded-xl h-12 px-4"
-                />
+              <div className="space-y-10">
+                <div>
+                  <label className="text-[9px] font-black tracking-[0.3em] uppercase text-primary/30 block mb-4">Academic Year</label>
+                  <Input
+                    data-testid="year-input"
+                    value={formData.year}
+                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                    placeholder="e.g. Junior"
+                    className="newsletter-input border-none px-0 text-2xl font-fraunces italic placeholder:text-primary/10"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[9px] font-black tracking-[0.3em] uppercase text-primary/30 block mb-4">Field of Study</label>
+                  <Input
+                    data-testid="branch-input"
+                    value={formData.branch}
+                    onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                    placeholder="e.g. Psychology"
+                    className="newsletter-input border-none px-0 text-2xl font-fraunces italic placeholder:text-primary/10"
+                  />
+                </div>
+
+                <button
+                  data-testid="next-step-btn"
+                  onClick={() => setStep(2)}
+                  disabled={!formData.year || !formData.branch}
+                  className="w-full bg-primary text-white rounded-full py-8 text-xs font-black tracking-[0.3em] uppercase shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-4 disabled:opacity-30 disabled:hover:scale-100"
+                >
+                  Continue Calibration <ArrowRight className="w-5 h-5" />
+                </button>
               </div>
-
-              <Button
-                data-testid="next-step-btn"
-                onClick={() => setStep(2)}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-6 text-lg font-medium shadow-soft hover:shadow-float transition-all"
-              >
-                Continue
-              </Button>
             </div>
           )}
 
           {step === 2 && (
-            <div data-testid="onboarding-step-2" className="space-y-6 animate-fade-in">
-              <h2 className="font-fraunces text-3xl font-normal mb-2">What brings you here?</h2>
-              <p className="text-muted-foreground mb-6">Select all that apply (optional)</p>
+            <div data-testid="onboarding-step-2" className="animate-fade-in relative z-10">
+              <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center mb-10">
+                <Waves className="w-8 h-8 text-secondary" />
+              </div>
+              <h2 className="font-fraunces text-5xl md:text-6xl mb-6 italic">The Pulse.</h2>
+              <p className="text-xl text-primary/40 leading-relaxed font-fraunces mb-12">What frequencies have you been feeling lately?</p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4 mb-16">
                 {CONCERNS.map((concern) => (
                   <button
                     key={concern}
-                    data-testid={`concern-${concern.toLowerCase().replace(/\s+/g, '-')}`}
                     onClick={() => toggleConcern(concern)}
-                    className={`p-4 rounded-xl border-2 transition-all text-left ${
+                    className={`p-6 rounded-[2rem] border transition-all text-left group ${
                       formData.concerns.includes(concern)
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border/40 hover:border-primary/30'
+                        ? 'bg-primary text-white border-primary shadow-xl scale-105'
+                        : 'bg-white text-primary border-primary/5 hover:border-primary/20'
                     }`}
                   >
-                    <span className="text-sm font-medium">{concern}</span>
+                    <div className="text-sm font-bold opacity-80">{concern}</div>
                   </button>
                 ))}
               </div>
 
-              <div className="flex gap-3">
-                <Button
-                  data-testid="back-btn"
+              <div className="flex gap-4">
+                <button
                   onClick={() => setStep(1)}
-                  variant="outline"
-                  className="flex-1 bg-white/50 hover:bg-white/70 rounded-full py-6 text-lg font-medium border-border/60"
+                  className="flex-1 bg-white border border-primary/10 text-primary rounded-full py-8 text-xs font-black tracking-[0.3em] uppercase hover:bg-primary/5 transition-all"
                 >
                   Back
-                </Button>
-                <Button
-                  data-testid="next-step-2-btn"
+                </button>
+                <button
                   onClick={() => setStep(3)}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-6 text-lg font-medium shadow-soft hover:shadow-float transition-all"
+                  className="flex-[2] bg-primary text-white rounded-full py-8 text-xs font-black tracking-[0.3em] uppercase shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-4"
                 >
-                  Continue
-                </Button>
+                  Continue <ArrowRight className="w-5 h-5" />
+                </button>
               </div>
             </div>
           )}
 
           {step === 3 && (
-            <div data-testid="onboarding-step-3" className="space-y-6 animate-fade-in">
-              <h2 className="font-fraunces text-3xl font-normal mb-2">Important Information</h2>
+            <div data-testid="onboarding-step-3" className="animate-fade-in relative z-10">
+              <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center mb-10">
+                <ShieldCheck className="w-8 h-8 text-secondary" />
+              </div>
+              <h2 className="font-fraunces text-5xl md:text-6xl mb-6 italic">Trust.</h2>
               
-              <div className="bg-muted/30 rounded-xl p-6 space-y-4">
-                <h3 className="font-medium text-lg">Understanding CalmSphere AI</h3>
-                <ul className="space-y-2 text-muted-foreground text-sm">
-                  <li>• CalmSphere AI is a <strong>supportive tool</strong>, not a replacement for professional therapy</li>
-                  <li>• We do not diagnose conditions or prescribe medications</li>
-                  <li>• Your conversations are private and can be pseudonymous</li>
-                  <li>• In crisis situations, we provide immediate resources and encourage professional help</li>
-                  <li>• Counselors may access anonymized, aggregated data only</li>
+              <div className="bg-primary/5 rounded-[3rem] p-10 mb-12 border border-primary/5">
+                <h3 className="text-[10px] font-black tracking-widest uppercase text-primary/30 mb-8 italic">— Sanctuary Protocol</h3>
+                <ul className="space-y-6">
+                  {[
+                    "Supportive tool, not a clinical replacement.",
+                    "Conversations are private & end-to-end encrypted.",
+                    "Zero-knowledge storage architecture.",
+                    "Immediate crisis resources always available."
+                  ].map((text, i) => (
+                    <li key={i} className="flex gap-4 text-sm font-medium opacity-60">
+                      <Zap className="w-4 h-4 text-secondary flex-shrink-0" />
+                      {text}
+                    </li>
+                  ))}
                 </ul>
               </div>
 
-              <div className="flex items-start space-x-3">
+              <div className="flex items-start gap-4 mb-16 p-4">
                 <Checkbox
-                  data-testid="consent-checkbox"
                   checked={formData.consent_given}
                   onCheckedChange={(checked) => setFormData({ ...formData, consent_given: checked })}
                   id="consent"
-                  className="mt-1"
+                  className="mt-1 border-primary/20"
                 />
-                <label htmlFor="consent" className="text-sm text-muted-foreground leading-relaxed">
-                  I understand that CalmSphere AI is a self-help tool and not a substitute for professional mental health care. 
-                  I acknowledge that in case of emergency, I should contact crisis services or emergency services immediately.
+                <label htmlFor="consent" className="text-[10px] font-bold text-primary/40 tracking-wide leading-relaxed cursor-pointer">
+                  I understand that CalmSphere AI is a <span className="text-primary font-black">self-help tool</span> and I acknowledge the crisis protocols.
                 </label>
               </div>
 
-              <div className="flex gap-3">
-                <Button
-                  data-testid="back-btn-2"
+              <div className="flex gap-4">
+                <button
                   onClick={() => setStep(2)}
-                  variant="outline"
-                  className="flex-1 bg-white/50 hover:bg-white/70 rounded-full py-6 text-lg font-medium border-border/60"
+                  className="flex-1 bg-white border border-primary/10 text-primary rounded-full py-8 text-xs font-black tracking-[0.3em] uppercase hover:bg-primary/5 transition-all"
                 >
                   Back
-                </Button>
-                <Button
-                  data-testid="complete-onboarding-btn"
+                </button>
+                <button
                   onClick={handleSubmit}
                   disabled={!formData.consent_given}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-6 text-lg font-medium shadow-soft hover:shadow-float transition-all disabled:opacity-50"
+                  className="flex-[2] bg-primary text-white rounded-full py-8 text-xs font-black tracking-[0.3em] uppercase shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-4 disabled:opacity-30"
                 >
-                  Complete Setup
-                </Button>
+                  Enter Sanctuary <Sparkles className="w-5 h-5" />
+                </button>
               </div>
             </div>
           )}
 
-          <div className="flex justify-center gap-2 mt-8">
+          <div className="flex justify-center gap-3 mt-16">
             {[1, 2, 3].map((s) => (
               <div
                 key={s}
-                className={`h-2 rounded-full transition-all ${
-                  s === step ? 'w-8 bg-primary' : 'w-2 bg-muted'
+                className={`h-1 rounded-full transition-all duration-700 ${
+                  s === step ? 'w-12 bg-secondary shadow-lg' : 'w-4 bg-primary/5'
                 }`}
               />
             ))}

@@ -4,6 +4,7 @@ CREATE TABLE public.users (
     user_id TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     name TEXT,
+    password_hash TEXT,
     picture TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

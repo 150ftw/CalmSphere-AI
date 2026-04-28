@@ -27,6 +27,7 @@ from content_selector import (
 from emergentintegrations.llm.chat import LlmChat, UserMessage as LlmUserMessage
 import new_features_routes
 import google_auth
+import custom_auth
 from auth_middleware import get_current_user_id
 
 from supabase import create_client, Client
@@ -93,9 +94,11 @@ async def get_latest_scores(user_id: str) -> dict:
             
     return scores
 
-# Include Google Auth routes
+# Include Auth routes
 google_auth.set_db(db)
+custom_auth.set_db(db)
 app.include_router(google_auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(custom_auth.router, prefix="/api/auth", tags=["auth"])
 
 # Profile Routes
 @api_router.post("/profile/onboarding")

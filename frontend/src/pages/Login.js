@@ -1,165 +1,216 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { Sparkles, ArrowLeft, ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { loginUser, user } = useAuth();
+  const { login, loginWithGoogle, register, user, loading: authLoading } = useAuth();
+  const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
-  const hasProcessed = useRef(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    name: ''
+  });
+
+  // Parallax effect for login card
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({
+        x: (e.clientX / window.innerWidth - 0.5) * 20,
+        y: (e.clientY / window.innerHeight - 0.5) * 20
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   // If user already logged in, redirect to dashboard
   useEffect(() => {
-    if (user) {
+    if (user && !authLoading) {
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
-  // Handle OAuth callback - check for session_id in URL hash
-  useEffect(() => {
-    const hash = location.hash;
-    if (hash && hash.includes('session_id=') && !hasProcessed.current) {
-      hasProcessed.current = true;
-      const sessionId = hash.split('session_id=')[1]?.split('&')[0];
-      if (sessionId) {
-        handleGoogleCallback(sessionId);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.hash]);
-
-  const handleGoogleCallback = async (sessionId) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      // Exchange session_id for user data
-      const response = await axios.post(
-        `${API_URL}/api/auth/session`,
-        {},
-        {
-          headers: {
-            'X-Session-ID': sessionId
-          }
-        }
-      );
-
-      const { session_token, user: userData } = response.data;
-      
-      // Store session and user data
-      loginUser(userData, session_token);
-      
-      toast.success(`Welcome, ${userData.name || 'User'}!`);
-      
-      // Clear the hash from URL
-      window.history.replaceState(null, '', window.location.pathname);
-      
-      // Check if user needs onboarding
-      try {
-        const profileResponse = await axios.get(`${API_URL}/api/profile`, {
-          headers: { Authorization: `Bearer ${session_token}` }
-        });
-        
-        if (profileResponse.data?.onboarding_completed) {
-          navigate('/dashboard');
-        } else {
-          navigate('/onboarding');
-        }
-      } catch (e) {
-        // Profile not found, go to onboarding
-        navigate('/onboarding');
-      }
+      await loginWithGoogle(credentialResponse.credential);
+      toast.success("Welcome to the sanctuary.");
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Auth error:', error);
-      const detail = error.response?.data?.detail || error.message || 'Unknown error';
-      toast.error(`Authentication failed: ${detail}`);
-      hasProcessed.current = false;
+      console.error('Google auth error:', error);
+      toast.error("Google authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = window.location.origin + '/login';
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (isRegister) {
+        await register(formData.name, formData.email, formData.password);
+        toast.success("Sanctuary identity created.");
+        navigate('/onboarding');
+      } else {
+        await login(formData.email, formData.password);
+        toast.success("Welcome back to the sanctuary.");
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      toast.error(error.response?.data?.detail || "Authentication failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-background bg-noise flex items-center justify-center px-6">
-        <div className="w-full max-w-md text-center">
-          <div className="bg-card rounded-2xl shadow-float p-8 border border-border/40">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-            <h2 className="font-fraunces text-2xl font-normal mb-2">Signing you in...</h2>
-            <p className="text-muted-foreground">Please wait while we set up your account</p>
-          </div>
+      <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+        <div className="mesh-bg opacity-30" />
+        <div className="text-center z-10">
+          <div className="w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-10 shadow-2xl"></div>
+          <h2 className="font-fraunces text-4xl italic text-primary">Entering the Sanctuary...</h2>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background bg-noise flex items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        <div className="bg-card rounded-2xl shadow-float p-8 border border-border/40">
-          <div className="text-center mb-8">
-            <h1 className="font-fraunces text-4xl font-normal mb-2">Welcome to CalmSphere</h1>
-            <p className="text-muted-foreground">Sign in to continue your wellness journey</p>
+    <div className="min-h-screen bg-white selection:bg-primary selection:text-white flex items-center justify-center px-6 py-20 relative overflow-hidden">
+      <div className="mesh-bg opacity-30" />
+      <div className="aura-blob top-1/4 right-0 opacity-20 animate-pulse" />
+      <div className="aura-blob bottom-1/4 left-0 opacity-20" />
+      
+      <div 
+        className="w-full max-w-lg z-10 transition-transform duration-75"
+        style={{ transform: `translate(${mousePos.x}px, ${mousePos.y}px)` }}
+      >
+        <div className="luxury-card p-12 md:p-16 relative overflow-hidden">
+          <div className="text-center mb-12 relative z-10">
+            <div className="inline-flex items-center gap-3 group cursor-pointer mb-8" onClick={() => navigate('/')}>
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center group-hover:rotate-12 transition-transform shadow-lg">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <span className="font-fraunces text-2xl font-bold tracking-tight text-primary">CalmSphere AI</span>
+            </div>
+            <h1 className="font-fraunces text-4xl italic text-primary mb-4">
+              {isRegister ? "Begin Your Path." : "Welcome Home."}
+            </h1>
+            <p className="text-base text-primary/40 font-fraunces">The sanctuary is yours.</p>
           </div>
 
-          <Button
-            data-testid="google-signin-btn"
-            onClick={handleGoogleSignIn}
-            className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 rounded-full py-6 text-lg font-medium shadow-soft hover:shadow-float transition-all flex items-center justify-center gap-3"
-          >
-            <svg className="w-6 h-6" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+          {!isRegister && (
+            <div className="flex justify-center mb-10 relative z-10 scale-110">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => toast.error("Google authentication failed")}
+                useOneTap
+                theme="outline"
+                shape="pill"
+                size="large"
+                width="320"
               />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            Continue with Google
-          </Button>
+            </div>
+          )}
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              By signing in, you agree to our Terms of Service and Privacy Policy
+          {!isRegister && (
+            <div className="relative mb-10 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-primary/5"></div></div>
+              <span className="relative bg-white px-6 text-[8px] font-black tracking-[0.4em] uppercase text-primary/20">or enter via identity</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6 relative z-10">
+            {isRegister && (
+              <div className="relative">
+                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/20" />
+                <Input
+                  required
+                  autoComplete="new-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Full Name"
+                  className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic placeholder:text-primary/10 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
+                />
+              </div>
+            )}
+            
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/20" />
+              <Input
+                required
+                type="email"
+                autoComplete="new-email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="Email Address"
+                className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic placeholder:text-primary/10 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/20" />
+              <Input
+                required
+                type="password"
+                autoComplete="new-password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="Password"
+                className="bg-transparent border-none border-b border-primary/10 pl-16 pr-8 py-8 text-2xl font-fraunces italic placeholder:text-primary/10 w-full focus:ring-0 focus:border-primary/30 transition-all rounded-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-white rounded-full py-6 text-[10px] font-black tracking-[0.3em] uppercase shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-4 disabled:opacity-30 mt-8"
+            >
+              {loading ? "Establishing Connection..." : (isRegister ? "Create Sanctuary Identity" : "Enter Sanctuary")} 
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          <div className="mt-8 text-center relative z-10">
+            <button
+              onClick={() => setIsRegister(!isRegister)}
+              className="text-[10px] font-black tracking-widest uppercase text-primary/30 hover:text-primary transition-all underline decoration-primary/10 underline-offset-8"
+            >
+              {isRegister ? "Already have an identity? Enter here" : "No identity yet? Begin path here"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-8 luxury-card p-8 border-primary/5 bg-primary/5">
+          <div className="flex gap-4 items-start">
+            <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+              <ShieldCheck className="w-4 h-4 text-secondary" />
+            </div>
+            <p className="text-[9px] font-bold text-primary/40 tracking-wide leading-relaxed">
+              Your identity is protected by <span className="text-primary font-black">Sovereign Encryption</span>. 
+              We never share your personal path with third parties.
             </p>
           </div>
         </div>
 
-        <div className="mt-6 bg-muted/30 rounded-xl p-4 border border-border/40">
-          <p className="text-sm text-muted-foreground text-center">
-            CalmSphere AI is a <strong>supportive tool</strong>, not a replacement for professional mental health care. 
-            In crisis, contact KIRAN: <strong>1800-599-0019</strong>
-          </p>
-        </div>
-
-        <div className="mt-4 text-center">
-          <Button
-            variant="link"
+        <div className="mt-8 text-center">
+          <button
             onClick={() => navigate('/')}
-            className="text-muted-foreground hover:text-primary"
+            className="flex items-center gap-3 mx-auto text-[9px] font-black tracking-[0.3em] uppercase text-primary/20 hover:text-primary transition-all group"
           >
-            Back to Home
-          </Button>
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-2 transition-transform" />
+            Return to Horizon
+          </button>
         </div>
       </div>
     </div>

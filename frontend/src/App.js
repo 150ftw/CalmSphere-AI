@@ -17,6 +17,11 @@ import Appointments from './pages/Appointments';
 import Journal from './pages/Journal';
 import Community from './pages/Community';
 import Insights from './pages/Insights';
+import Science from './pages/Science';
+import Experience from './pages/Experience';
+import Security from './pages/Security';
+import Discovery from './pages/Discovery';
+import InnerCircle from './pages/InnerCircle';
 
 import './App.css';
 
@@ -65,6 +70,11 @@ function AppRoutes() {
       <Route path="/journal" element={<PrivateRoute><Journal /></PrivateRoute>} />
       <Route path="/community" element={<PrivateRoute><Community /></PrivateRoute>} />
       <Route path="/insights" element={<PrivateRoute><Insights /></PrivateRoute>} />
+      <Route path="/science" element={<Science />} />
+      <Route path="/experience" element={<Experience />} />
+      <Route path="/security" element={<Security />} />
+      <Route path="/discovery" element={<Discovery />} />
+      <Route path="/inner-circle" element={<InnerCircle />} />
     </Routes>
   );
 }

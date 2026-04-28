@@ -20,8 +20,7 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data);
         setToken(storedToken);
       } catch (error) {
-        // Session expired or invalid
-        console.log('Session verification failed:', error);
+        console.log('Sovereign session verification failed:', error);
         localStorage.removeItem('session_token');
         localStorage.removeItem('user');
         setUser(null);
@@ -31,14 +30,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // Verify session on mount
   useEffect(() => {
-    // CRITICAL: If returning from OAuth callback, skip the /me check.
-    // AuthCallback will exchange the session_id and establish the session first.
-    if (window.location.hash?.includes('session_id=')) {
-      setLoading(false);
-      return;
-    }
     checkAuth();
   }, [checkAuth]);
 
@@ -49,23 +41,38 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const logout = async () => {
-    try {
-      await axios.post(`${API_URL}/api/auth/logout`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    } catch (error) {
-      console.log('Logout error:', error);
-    }
-    
+  const login = async (email, password) => {
+    const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+    const { access_token, user: userData } = response.data;
+    loginUser(userData, access_token);
+    return userData;
+  };
+
+  const loginWithGoogle = async (credential) => {
+    const response = await axios.post(`${API_URL}/api/auth/google`, { credential });
+    const { access_token, user: userData } = response.data;
+    loginUser(userData, access_token);
+    return userData;
+  };
+
+  const register = async (name, email, password) => {
+    const response = await axios.post(`${API_URL}/api/auth/register`, { name, email, password });
+    const { access_token, user: userData } = response.data;
+    loginUser(userData, access_token);
+    return userData;
+  };
+
+  const logout = () => {
+    // For sovereign JWT, we just clear local state
     setUser(null);
     setToken(null);
     localStorage.removeItem('session_token');
     localStorage.removeItem('user');
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loginUser, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, loginUser, login, loginWithGoogle, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
