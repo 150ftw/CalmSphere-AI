@@ -29,10 +29,19 @@ import new_features_routes
 import google_auth
 from auth_middleware import get_current_user_id
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+from supabase import create_client, Client
+
+# Supabase connection
+supabase_url = os.environ.get('SUPABASE_URL')
+supabase_key = os.environ.get('SUPABASE_KEY')
+
+if not supabase_url or not supabase_key:
+    # Fallback placeholders if env vars are missing to prevent crash on import
+    supabase_url = "https://placeholder.supabase.co"
+    supabase_key = "placeholder_key"
+    
+supabase: Client = create_client(supabase_url, supabase_key)
+db = supabase  # Alias for easier refactoring
 
 # Create the main app
 app = FastAPI()
@@ -57,27 +66,31 @@ Remember: You are a supportive tool, not a replacement for professional mental h
 
 # Helper functions
 async def get_config() -> dict:
-    config = await db.config_settings.find_one({}, {"_id": 0})
-    if not config:
-        config = {
-            "crisis_hotline": "1800-599-0019",  # KIRAN Mental Health Helpline
-            "campus_counselor_phone": "Contact your campus health center",
-            "campus_counselor_email": "Available through campus resources",
-            "risk_threshold_high": 15,
-            "risk_threshold_medium": 10
-        }
-    return config
+    try:
+        response = supabase.table("config_settings").select("*").limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+    except Exception as e:
+        logger.error(f"Error getting config: {e}")
+        
+    return {
+        "crisis_hotline": "1800-599-0019",  # KIRAN Mental Health Helpline
+        "campus_counselor_phone": "Contact your campus health center",
+        "campus_counselor_email": "Available through campus resources",
+        "risk_threshold_high": 15,
+        "risk_threshold_medium": 10
+    }
 
 async def get_latest_scores(user_id: str) -> dict:
     scores = {}
     for assessment_type in ['phq9', 'gad7', 'stress']:
-        result = await db.assessment_results.find_one(
-            {"user_id": user_id, "assessment_type": assessment_type},
-            {"_id": 0},
-            sort=[("timestamp", -1)]
-        )
-        if result:
-            scores[assessment_type] = result['total_score']
+        try:
+            response = supabase.table("assessment_results").select("total_score").eq("user_id", user_id).eq("assessment_type", assessment_type).order("timestamp", desc=True).limit(1).execute()
+            if response.data and len(response.data) > 0:
+                scores[assessment_type] = response.data[0]['total_score']
+        except Exception as e:
+            logger.error(f"Error getting scores for {assessment_type}: {e}")
+            
     return scores
 
 # Include Google Auth routes
@@ -102,15 +115,33 @@ async def complete_onboarding(profile_data: dict, request: Request):
     profile_dict = profile.model_dump()
     profile_dict['created_at'] = profile_dict['created_at'].isoformat()
     
-    await db.user_profiles.insert_one(profile_dict)
-    
+    try:
+        # Check if user already exists
+        response = supabase.table("user_profiles").select("*").eq("user_id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            supabase.table("user_profiles").update(profile_dict).eq("user_id", user_id).execute()
+        else:
+            supabase.table("user_profiles").insert(profile_dict).execute()
+    except Exception as e:
+        logger.error(f"Error saving profile: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save profile")
+        
     return {"message": "Onboarding completed", "profile": profile}
 
 @api_router.get("/profile")
 async def get_profile(request: Request):
     user_id = await get_current_user_id(request)
-    profile = await db.user_profiles.find_one({"user_id": user_id}, {"_id": 0})
-    return profile
+    try:
+        response = supabase.table("user_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            # Remove id column if it exists to match old behavior
+            profile = response.data[0]
+            if 'id' in profile:
+                del profile['id']
+            return profile
+    except Exception as e:
+        logger.error(f"Error getting profile: {e}")
+    return None
 
 # Chat Routes
 @api_router.post("/chat/session/create")
@@ -119,42 +150,59 @@ async def create_chat_session(request: Request):
     
     session = ChatSession(user_id=user_id)
     session_dict = session.model_dump()
-    session_dict['created_at'] = session_dict['created_at'].isoformat()
-    session_dict['updated_at'] = session_dict['updated_at'].isoformat()
     
-    await db.chat_sessions.insert_one(session_dict)
+    # Filter to match Supabase schema
+    allowed_keys = {'id', 'user_id', 'created_at', 'updated_at'}
+    filtered_session = {k: v for k, v in session_dict.items() if k in allowed_keys}
+    
+    filtered_session['created_at'] = filtered_session['created_at'].isoformat()
+    filtered_session['updated_at'] = filtered_session['updated_at'].isoformat()
+    
+    try:
+        supabase.table("chat_sessions").insert(filtered_session).execute()
+    except Exception as e:
+        logger.error(f"Error creating chat session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create chat session")
     
     return session
 
 @api_router.get("/chat/sessions")
 async def get_chat_sessions(request: Request):
     user_id = await get_current_user_id(request)
-    sessions = await db.chat_sessions.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).sort("updated_at", -1).to_list(50)
-    
-    for session in sessions:
-        if isinstance(session.get('created_at'), str):
-            session['created_at'] = datetime.fromisoformat(session['created_at'])
-        if isinstance(session.get('updated_at'), str):
-            session['updated_at'] = datetime.fromisoformat(session['updated_at'])
-    
-    return sessions
+    try:
+        response = supabase.table("chat_sessions").select("*").eq("user_id", user_id).order("updated_at", desc=True).limit(50).execute()
+        sessions = response.data or []
+        
+        for session in sessions:
+            if 'id' in session:
+                del session['id']
+            if isinstance(session.get('created_at'), str):
+                session['created_at'] = datetime.fromisoformat(session['created_at'])
+            if isinstance(session.get('updated_at'), str):
+                session['updated_at'] = datetime.fromisoformat(session['updated_at'])
+        
+        return sessions
+    except Exception as e:
+        logger.error(f"Error getting chat sessions: {e}")
+        return []
 
 @api_router.get("/chat/session/{session_id}/messages")
 async def get_chat_messages(session_id: str, request: Request):
     await get_current_user_id(request)  # Verify user is authenticated
-    messages = await db.chat_messages.find(
-        {"session_id": session_id},
-        {"_id": 0}
-    ).sort("timestamp", 1).to_list(1000)
-    
-    for msg in messages:
-        if isinstance(msg.get('timestamp'), str):
-            msg['timestamp'] = datetime.fromisoformat(msg['timestamp'])
-    
-    return messages
+    try:
+        response = supabase.table("chat_messages").select("*").eq("session_id", session_id).order("timestamp", desc=False).limit(1000).execute()
+        messages = response.data or []
+        
+        for msg in messages:
+            if 'id' in msg:
+                del msg['id']
+            if isinstance(msg.get('timestamp'), str):
+                msg['timestamp'] = datetime.fromisoformat(msg['timestamp'])
+        
+        return messages
+    except Exception as e:
+        logger.error(f"Error getting chat messages: {e}")
+        return []
 
 @api_router.post("/chat/send")
 async def send_message(request_data: SendMessageRequest, request: Request):
@@ -174,13 +222,20 @@ async def send_message(request_data: SendMessageRequest, request: Request):
     
     user_msg_dict = user_message.model_dump()
     user_msg_dict['timestamp'] = user_msg_dict['timestamp'].isoformat()
-    await db.chat_messages.insert_one(user_msg_dict)
     
-    # Update session timestamp
-    await db.chat_sessions.update_one(
-        {"id": request_data.session_id},
-        {"$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
+    # Filter to match Supabase schema
+    msg_allowed_keys = {'id', 'session_id', 'user_id', 'role', 'content', 'risk_level', 'timestamp'}
+    filtered_user_msg = {k: v for k, v in user_msg_dict.items() if k in msg_allowed_keys}
+    
+    try:
+        supabase.table("chat_messages").insert(filtered_user_msg).execute()
+        
+        # Update session timestamp
+        supabase.table("chat_sessions").update(
+            {"updated_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", request_data.session_id).execute()
+    except Exception as e:
+        logger.error(f"Error saving user message or updating session: {e}")
     
     # Handle crisis
     if risk_level == 'crisis':
@@ -197,19 +252,24 @@ async def send_message(request_data: SendMessageRequest, request: Request):
         
         assist_msg_dict = assistant_message.model_dump()
         assist_msg_dict['timestamp'] = assist_msg_dict['timestamp'].isoformat()
-        await db.chat_messages.insert_one(assist_msg_dict)
         
+        # Filter to match Supabase schema
+        msg_allowed_keys = {'id', 'session_id', 'user_id', 'role', 'content', 'risk_level', 'timestamp'}
+        filtered_assist_msg = {k: v for k, v in assist_msg_dict.items() if k in msg_allowed_keys}
+        
+        try:
+            supabase.table("chat_messages").insert(filtered_assist_msg).execute()
+        except Exception as e:
+            logger.error(f"Error saving crisis message: {e}")
+            
         return {
             "message": assistant_message,
             "risk_level": "crisis",
             "show_crisis_resources": True
         }
     
-    # Get conversation history
-    history = await db.chat_messages.find(
-        {"session_id": request_data.session_id},
-        {"_id": 0}
-    ).sort("timestamp", 1).limit(20).to_list(20)
+    # Get conversation history for context to LLM (optional, but good for context windows)
+    # history = supabase.table("chat_messages").select("role, content").eq("session_id", request_data.session_id).order("timestamp", desc=True).limit(20).execute()
     
     # Call LLM
     try:
@@ -228,7 +288,7 @@ async def send_message(request_data: SendMessageRequest, request: Request):
             response += "\n\n" + get_high_risk_response()
         
     except Exception as e:
-        logging.error(f"LLM error: {e}")
+        logger.error(f"LLM error: {e}")
         response = "I'm having trouble connecting right now. Please try again in a moment. If you're in crisis, please reach out to a crisis hotline or emergency services immediately."
     
     # Save assistant response
@@ -242,7 +302,16 @@ async def send_message(request_data: SendMessageRequest, request: Request):
     
     assist_msg_dict = assistant_message.model_dump()
     assist_msg_dict['timestamp'] = assist_msg_dict['timestamp'].isoformat()
-    await db.chat_messages.insert_one(assist_msg_dict)
+    
+    # Filter to match Supabase schema
+    msg_allowed_keys = {'id', 'session_id', 'user_id', 'role', 'content', 'risk_level', 'timestamp'}
+    filtered_assist_msg = {k: v for k, v in assist_msg_dict.items() if k in msg_allowed_keys}
+    
+    try:
+        supabase.table("chat_messages").insert(filtered_assist_msg).execute()
+    except Exception as e:
+        logger.error(f"Error saving assistant message: {e}")
+
     
     # Get recommended modules
     latest_scores = await get_latest_scores(user_id)
@@ -280,7 +349,11 @@ async def submit_assessment(request_data: SubmitAssessmentRequest, request: Requ
     
     result_dict = result.model_dump()
     result_dict['timestamp'] = result_dict['timestamp'].isoformat()
-    await db.assessment_results.insert_one(result_dict)
+    try:
+        supabase.table("assessment_results").insert(result_dict).execute()
+    except Exception as e:
+        logger.error(f"Error saving assessment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save assessment")
     
     return result
 
@@ -288,16 +361,20 @@ async def submit_assessment(request_data: SubmitAssessmentRequest, request: Requ
 async def get_assessment_history(assessment_type: str, request: Request):
     user_id = await get_current_user_id(request)
     
-    results = await db.assessment_results.find(
-        {"user_id": user_id, "assessment_type": assessment_type},
-        {"_id": 0}
-    ).sort("timestamp", -1).to_list(50)
-    
-    for result in results:
-        if isinstance(result.get('timestamp'), str):
-            result['timestamp'] = datetime.fromisoformat(result['timestamp'])
-    
-    return results
+    try:
+        response = supabase.table("assessment_results").select("*").eq("user_id", user_id).eq("assessment_type", assessment_type).order("timestamp", desc=True).limit(50).execute()
+        results = response.data or []
+        
+        for result in results:
+            if 'id' in result:
+                del result['id']
+            if isinstance(result.get('timestamp'), str):
+                result['timestamp'] = datetime.fromisoformat(result['timestamp'])
+        
+        return results
+    except Exception as e:
+        logger.error(f"Error getting assessment history: {e}")
+        return []
 
 # Mood Routes
 @api_router.post("/mood/log")
@@ -313,7 +390,11 @@ async def log_mood(request_data: MoodEntryRequest, request: Request):
     
     entry_dict = entry.model_dump()
     entry_dict['timestamp'] = entry_dict['timestamp'].isoformat()
-    await db.mood_entries.insert_one(entry_dict)
+    try:
+        supabase.table("mood_entries").insert(entry_dict).execute()
+    except Exception as e:
+        logger.error(f"Error saving mood log: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save mood log")
     
     return entry
 
@@ -321,16 +402,20 @@ async def log_mood(request_data: MoodEntryRequest, request: Request):
 async def get_mood_history(request: Request):
     user_id = await get_current_user_id(request)
     
-    entries = await db.mood_entries.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).sort("timestamp", -1).to_list(100)
-    
-    for entry in entries:
-        if isinstance(entry.get('timestamp'), str):
-            entry['timestamp'] = datetime.fromisoformat(entry['timestamp'])
-    
-    return entries
+    try:
+        response = supabase.table("mood_entries").select("*").eq("user_id", user_id).order("timestamp", desc=True).limit(100).execute()
+        entries = response.data or []
+        
+        for entry in entries:
+            if 'id' in entry:
+                del entry['id']
+            if isinstance(entry.get('timestamp'), str):
+                entry['timestamp'] = datetime.fromisoformat(entry['timestamp'])
+        
+        return entries
+    except Exception as e:
+        logger.error(f"Error getting mood history: {e}")
+        return []
 
 # Self-help modules
 @api_router.get("/modules")
@@ -344,21 +429,31 @@ async def get_student_dashboard(request: Request):
     user_id = await get_current_user_id(request)
     
     # Get latest mood
-    latest_mood = await db.mood_entries.find_one(
-        {"user_id": user_id},
-        {"_id": 0},
-        sort=[("timestamp", -1)]
-    )
+    latest_mood = None
+    try:
+        mood_response = supabase.table("mood_entries").select("*").eq("user_id", user_id).order("timestamp", desc=True).limit(1).execute()
+        if mood_response.data and len(mood_response.data) > 0:
+            latest_mood = mood_response.data[0]
+            if 'id' in latest_mood:
+                del latest_mood['id']
+    except Exception as e:
+        logger.error(f"Error getting latest mood: {e}")
     
     # Get latest scores
     latest_scores = await get_latest_scores(user_id)
     
     # Get recent sessions
-    recent_sessions = await db.chat_sessions.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).sort("updated_at", -1).limit(5).to_list(5)
-    
+    recent_sessions = []
+    try:
+        session_response = supabase.table("chat_sessions").select("*").eq("user_id", user_id).order("updated_at", desc=True).limit(5).execute()
+        raw_sessions = session_response.data or []
+        for session in raw_sessions:
+            if 'id' in session:
+                del session['id']
+            recent_sessions.append(session)
+    except Exception as e:
+        logger.error(f"Error getting recent sessions: {e}")
+        
     return {
         "latest_mood": latest_mood,
         "latest_scores": latest_scores,
@@ -371,30 +466,47 @@ async def get_analytics(request: Request):
     user_id = await get_current_user_id(request)
     # Note: Role-based access can be implemented by checking user's role in DB
     
-    # Aggregate PHQ-9 scores
-    phq9_pipeline = [
-        {"$match": {"assessment_type": "phq9"}},
-        {"$group": {
-            "_id": "$severity",
-            "count": {"$sum": 1}
-        }}
-    ]
-    phq9_dist = await db.assessment_results.aggregate(phq9_pipeline).to_list(10)
+    # Supabase doesn't easily support dynamic grouping via the REST API for generic aggregations
+    # like MongoDB's pipeline. To keep this migration simple without requiring SQL RPC functions,
+    # we fetch the severities and do the grouping in Python.
     
-    # Aggregate GAD-7 scores
-    gad7_pipeline = [
-        {"$match": {"assessment_type": "gad7"}},
-        {"$group": {
-            "_id": "$severity",
-            "count": {"$sum": 1}
-        }}
-    ]
-    gad7_dist = await db.assessment_results.aggregate(gad7_pipeline).to_list(10)
+    phq9_dist = []
+    gad7_dist = []
+    total_users = 0
+    total_sessions = 0
+    total_assessments = 0
     
-    # Count active users
-    total_users = await db.users.count_documents({})
-    total_sessions = await db.chat_sessions.count_documents({})
-    total_assessments = await db.assessment_results.count_documents({})
+    try:
+        # Aggregate PHQ-9 scores
+        phq9_response = supabase.table("assessment_results").select("severity").eq("assessment_type", "phq9").execute()
+        if phq9_response.data:
+            counts = {}
+            for item in phq9_response.data:
+                sev = item.get("severity", "unknown")
+                counts[sev] = counts.get(sev, 0) + 1
+            phq9_dist = [{"_id": k, "count": v} for k, v in counts.items()]
+            
+        # Aggregate GAD-7 scores
+        gad7_response = supabase.table("assessment_results").select("severity").eq("assessment_type", "gad7").execute()
+        if gad7_response.data:
+            counts = {}
+            for item in gad7_response.data:
+                sev = item.get("severity", "unknown")
+                counts[sev] = counts.get(sev, 0) + 1
+            gad7_dist = [{"_id": k, "count": v} for k, v in counts.items()]
+            
+        # Counts (Supabase supports count='exact' in the client)
+        user_count_resp = supabase.table("users").select("*", count="exact").limit(1).execute()
+        total_users = user_count_resp.count if hasattr(user_count_resp, 'count') and user_count_resp.count is not None else len(supabase.table("users").select("user_id").execute().data or [])
+        
+        session_count_resp = supabase.table("chat_sessions").select("*", count="exact").limit(1).execute()
+        total_sessions = session_count_resp.count if hasattr(session_count_resp, 'count') and session_count_resp.count is not None else len(supabase.table("chat_sessions").select("session_id").execute().data or [])
+        
+        assess_count_resp = supabase.table("assessment_results").select("*", count="exact").limit(1).execute()
+        total_assessments = assess_count_resp.count if hasattr(assess_count_resp, 'count') and assess_count_resp.count is not None else len(supabase.table("assessment_results").select("id").execute().data or [])
+        
+    except Exception as e:
+        logger.error(f"Error getting analytics: {e}")
     
     return {
         "phq9_distribution": phq9_dist,
@@ -414,8 +526,13 @@ async def update_config(config_data: dict, request: Request):
     await get_current_user_id(request)  # Verify user is authenticated
     
     config_data['updated_at'] = datetime.now(timezone.utc).isoformat()
-    await db.config_settings.delete_many({})
-    await db.config_settings.insert_one(config_data)
+    try:
+        # Supabase doesn't have a simple delete_all, but we can delete where id is not null
+        supabase.table("config_settings").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+        supabase.table("config_settings").insert(config_data).execute()
+    except Exception as e:
+        logger.error(f"Error updating config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update config")
     
     return {"message": "Config updated"}
 
@@ -434,7 +551,12 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ] + os.environ.get('CORS_ORIGINS', '').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -447,4 +569,4 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    pass # Supabase REST client doesn't require explicit shutdown like Motor

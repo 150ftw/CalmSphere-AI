@@ -35,24 +35,38 @@ async def book_appointment(appointment_data: dict, request: Request):
     appt_dict['appointment_date'] = appt_dict['appointment_date'].isoformat()
     appt_dict['created_at'] = appt_dict['created_at'].isoformat()
     
-    await db.appointments.insert_one(appt_dict)
+    # Filter to match Supabase schema (remove reminder_sent)
+    allowed_keys = {'id', 'user_id', 'counselor_name', 'appointment_date', 'appointment_type', 'status', 'notes', 'created_at'}
+    filtered_appt = {k: v for k, v in appt_dict.items() if k in allowed_keys}
+    
+    try:
+        db.table("appointments").insert(filtered_appt).execute()
+    except Exception as e:
+        print(f"Error booking appointment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to book appointment")
+        
     return appointment
 
 @router.get("/appointments")
 async def get_appointments(request: Request):
     user_id = await get_current_user_id(request)
-    appointments = await db.appointments.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).sort("appointment_date", -1).to_list(100)
     
-    for appt in appointments:
-        if isinstance(appt.get('appointment_date'), str):
-            appt['appointment_date'] = datetime.fromisoformat(appt['appointment_date'])
-        if isinstance(appt.get('created_at'), str):
-            appt['created_at'] = datetime.fromisoformat(appt['created_at'])
-    
-    return appointments
+    try:
+        response = db.table("appointments").select("*").eq("user_id", user_id).order("appointment_date", desc=True).limit(100).execute()
+        appointments = response.data or []
+        
+        for appt in appointments:
+            if 'id' in appt:
+                del appt['id']
+            if isinstance(appt.get('appointment_date'), str):
+                appt['appointment_date'] = datetime.fromisoformat(appt['appointment_date'])
+            if isinstance(appt.get('created_at'), str):
+                appt['created_at'] = datetime.fromisoformat(appt['created_at'])
+        
+        return appointments
+    except Exception as e:
+        print(f"Error getting appointments: {e}")
+        return []
 
 @router.patch("/appointments/{appointment_id}/status")
 async def update_appointment_status(
@@ -61,15 +75,21 @@ async def update_appointment_status(
     request: Request
 ):
     user_id = await get_current_user_id(request)
-    result = await db.appointments.update_one(
-        {"id": appointment_id, "user_id": user_id},
-        {"$set": {"status": status}}
-    )
     
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    
-    return {"message": "Status updated"}
+    try:
+        result = db.table("appointments").update({"status": status}).eq("id", appointment_id).eq("user_id", user_id).execute()
+        
+        # Supabase Python client returns data on success, usually empty list if no match
+        # If no matched row was updated, data is empty
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+            
+        return {"message": "Status updated"}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        print(f"Error updating appointment status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update appointment")
 
 # Journal Routes
 @router.post("/journal/entries")
@@ -103,22 +123,36 @@ async def create_journal_entry(entry_data: dict, request: Request):
     entry_dict = entry.model_dump()
     entry_dict['created_at'] = entry_dict['created_at'].isoformat()
     
-    await db.journal_entries.insert_one(entry_dict)
+    # Filter to match Supabase schema
+    allowed_keys = {'id', 'user_id', 'title', 'content', 'prompt_type', 'sentiment', 'tags', 'is_private', 'created_at'}
+    filtered_entry = {k: v for k, v in entry_dict.items() if k in allowed_keys}
+    
+    try:
+        db.table("journal_entries").insert(filtered_entry).execute()
+    except Exception as e:
+        print(f"Error creating journal entry: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create journal entry")
+        
     return entry
 
 @router.get("/journal/entries")
 async def get_journal_entries(request: Request):
     user_id = await get_current_user_id(request)
-    entries = await db.journal_entries.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
     
-    for entry in entries:
-        if isinstance(entry.get('created_at'), str):
-            entry['created_at'] = datetime.fromisoformat(entry['created_at'])
-    
-    return entries
+    try:
+        response = db.table("journal_entries").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(100).execute()
+        entries = response.data or []
+        
+        for entry in entries:
+            if 'id' in entry:
+                del entry['id']
+            if isinstance(entry.get('created_at'), str):
+                entry['created_at'] = datetime.fromisoformat(entry['created_at'])
+        
+        return entries
+    except Exception as e:
+        print(f"Error getting journal entries: {e}")
+        return []
 
 @router.get("/journal/prompts")
 async def get_journal_prompts(request: Request):
@@ -153,7 +187,12 @@ async def create_community_post(post_data: dict, request: Request):
     post_dict = post.model_dump()
     post_dict['created_at'] = post_dict['created_at'].isoformat()
     
-    await db.community_posts.insert_one(post_dict)
+    try:
+        db.table("community_posts").insert(post_dict).execute()
+    except Exception as e:
+        print(f"Error creating post: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create post")
+        
     return post
 
 @router.get("/community/posts")
@@ -161,30 +200,46 @@ async def get_community_posts(category: str = None, request: Request = None):
     if request:
         await get_current_user_id(request)  # Verify auth
     
-    query = {}
-    if category:
-        query['category'] = category
-    
-    posts = await db.community_posts.find(query, {"_id": 0}).sort("created_at", -1).to_list(50)
-    
-    for post in posts:
-        if isinstance(post.get('created_at'), str):
-            post['created_at'] = datetime.fromisoformat(post['created_at'])
-    
-    return posts
+    try:
+        query = db.table("community_posts").select("*")
+        if category:
+            query = query.eq("category", category)
+            
+        response = query.order("created_at", desc=True).limit(50).execute()
+        posts = response.data or []
+        
+        for post in posts:
+            if 'id' in post:
+                del post['id']
+            if isinstance(post.get('created_at'), str):
+                post['created_at'] = datetime.fromisoformat(post['created_at'])
+        
+        return posts
+    except Exception as e:
+        print(f"Error getting posts: {e}")
+        return []
 
 @router.post("/community/posts/{post_id}/like")
 async def like_post(post_id: str, request: Request):
     await get_current_user_id(request)  # Verify auth
-    result = await db.community_posts.update_one(
-        {"id": post_id},
-        {"$inc": {"likes_count": 1}}
-    )
     
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Post not found")
-    
-    return {"message": "Liked"}
+    try:
+        # First get current likes
+        response = db.table("community_posts").select("likes_count").eq("id", post_id).limit(1).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Post not found")
+            
+        current_likes = response.data[0].get("likes_count", 0)
+        
+        # Then update with incremented value
+        db.table("community_posts").update({"likes_count": current_likes + 1}).eq("id", post_id).execute()
+        
+        return {"message": "Liked"}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        print(f"Error liking post: {e}")
+        raise HTTPException(status_code=500, detail="Failed to like post")
 
 @router.post("/community/posts/{post_id}/comments")
 async def add_comment(post_id: str, comment_data: dict, request: Request):
@@ -201,29 +256,44 @@ async def add_comment(post_id: str, comment_data: dict, request: Request):
     comment_dict = comment.model_dump()
     comment_dict['created_at'] = comment_dict['created_at'].isoformat()
     
-    await db.community_comments.insert_one(comment_dict)
+    # Filter to match Supabase schema (remove likes_count)
+    allowed_keys = {'id', 'post_id', 'user_id', 'username_display', 'content', 'created_at'}
+    filtered_comment = {k: v for k, v in comment_dict.items() if k in allowed_keys}
     
-    # Update comment count
-    await db.community_posts.update_one(
-        {"id": post_id},
-        {"$inc": {"comments_count": 1}}
-    )
+    try:
+        db.table("community_comments").insert(filtered_comment).execute()
+        
+        # Update comment count
+        # Get current count first
+        response = db.table("community_posts").select("comments_count").eq("id", post_id).limit(1).execute()
+        if response.data:
+            current_comments = response.data[0].get("comments_count", 0)
+            db.table("community_posts").update({"comments_count": current_comments + 1}).eq("id", post_id).execute()
+            
+    except Exception as e:
+        print(f"Error adding comment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add comment")
     
     return comment
 
 @router.get("/community/posts/{post_id}/comments")
 async def get_comments(post_id: str, request: Request):
     await get_current_user_id(request)  # Verify auth
-    comments = await db.community_comments.find(
-        {"post_id": post_id},
-        {"_id": 0}
-    ).sort("created_at", 1).to_list(100)
     
-    for comment in comments:
-        if isinstance(comment.get('created_at'), str):
-            comment['created_at'] = datetime.fromisoformat(comment['created_at'])
-    
-    return comments
+    try:
+        response = db.table("community_comments").select("*").eq("post_id", post_id).order("created_at", desc=False).limit(100).execute()
+        comments = response.data or []
+        
+        for comment in comments:
+            if 'id' in comment:
+                del comment['id']
+            if isinstance(comment.get('created_at'), str):
+                comment['created_at'] = datetime.fromisoformat(comment['created_at'])
+        
+        return comments
+    except Exception as e:
+        print(f"Error getting comments: {e}")
+        return []
 
 # Insights Routes
 @router.get("/insights/weekly")
@@ -235,14 +305,12 @@ async def get_weekly_insight(request: Request):
     week_start = now - timedelta(days=now.weekday())
     week_end = week_start + timedelta(days=7)
     
-    # Get mood data for the week
-    mood_entries = await db.mood_entries.find(
-        {
-            "user_id": user_id,
-            "timestamp": {"$gte": week_start.isoformat(), "$lte": week_end.isoformat()}
-        },
-        {"_id": 0}
-    ).to_list(100)
+    try:
+        response = db.table("mood_entries").select("*").eq("user_id", user_id).gte("timestamp", week_start.isoformat()).lte("timestamp", week_end.isoformat()).execute()
+        mood_entries = response.data or []
+    except Exception as e:
+        print(f"Error getting mood entries for insights: {e}")
+        mood_entries = []
     
     if not mood_entries:
         return {"message": "Not enough data for insights"}
@@ -319,15 +387,33 @@ async def create_goal(goal_data: dict, request: Request):
     if goal_dict.get('deadline'):
         goal_dict['deadline'] = goal_dict['deadline'].isoformat()
     
-    await db.user_goals.insert_one(goal_dict)
+    # Filter to match Supabase schema
+    allowed_keys = {'id', 'user_id', 'goal_type', 'target_value', 'current_value', 'deadline', 'status', 'created_at'}
+    filtered_goal = {k: v for k, v in goal_dict.items() if k in allowed_keys}
+    
+    try:
+        db.table("user_goals").insert(filtered_goal).execute()
+    except Exception as e:
+        print(f"Error creating goal: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create goal")
+        
     return goal
 
 @router.get("/goals")
 async def get_goals(request: Request):
     user_id = await get_current_user_id(request)
-    goals = await db.user_goals.find(
-        {"user_id": user_id, "status": "active"},
-        {"_id": 0}
-    ).to_list(100)
     
-    return goals
+    try:
+        response = db.table("user_goals").select("*").eq("user_id", user_id).eq("status", "active").limit(100).execute()
+        goals = response.data or []
+        
+        for goal in goals:
+            if 'id' in goal:
+                del goal['id']
+            if isinstance(goal.get('deadline'), str):
+                goal['deadline'] = datetime.fromisoformat(goal['deadline'])
+                
+        return goals
+    except Exception as e:
+        print(f"Error getting goals: {e}")
+        return []

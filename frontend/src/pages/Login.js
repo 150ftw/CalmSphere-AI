@@ -75,7 +75,8 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Auth error:', error);
-      toast.error('Authentication failed. Please try again.');
+      const detail = error.response?.data?.detail || error.message || 'Unknown error';
+      toast.error(`Authentication failed: ${detail}`);
       hasProcessed.current = false;
     } finally {
       setLoading(false);

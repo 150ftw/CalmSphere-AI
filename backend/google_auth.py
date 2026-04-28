@@ -40,42 +40,49 @@ async def get_current_user(request: Request, authorization: Optional[str] = Head
     if not session_token:
         return None
     
-    # Find session in database
-    session_doc = await db.user_sessions.find_one(
-        {"session_token": session_token},
-        {"_id": 0}
-    )
-    
-    if not session_doc:
+    try:
+        # Find session in database
+        response = db.table("user_sessions").select("*").eq("session_token", session_token).limit(1).execute()
+        if not response.data:
+            return None
+            
+        session_doc = response.data[0]
+        
+        # Check expiry
+        expires_at = session_doc["expires_at"]
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at < datetime.now(timezone.utc):
+            # Session expired, delete it
+            db.table("user_sessions").delete().eq("session_token", session_token).execute()
+            return None
+        
+        # Get user
+        user_id = session_doc.get("user_id")
+        user_response = db.table("users").select("*").eq("user_id", user_id).limit(1).execute()
+        
+        # Fallback for old records where id was used instead of user_id
+        if not user_response.data:
+            user_response = db.table("users").select("*").eq("id", user_id).limit(1).execute()
+            
+        if not user_response.data:
+            return None
+            
+        user_doc = user_response.data[0]
+        
+        if 'id' in user_doc and "user_id" not in user_doc:
+            user_doc["user_id"] = user_doc["id"]
+            
+        if 'id' in user_doc:
+            del user_doc['id']
+            
+        return user_doc
+    except Exception as e:
+        logger.error(f"Error getting current user: {e}")
         return None
-    
-    # Check expiry
-    expires_at = session_doc["expires_at"]
-    if isinstance(expires_at, str):
-        expires_at = datetime.fromisoformat(expires_at)
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    
-    if expires_at < datetime.now(timezone.utc):
-        # Session expired, delete it
-        await db.user_sessions.delete_one({"session_token": session_token})
-        return None
-    
-    # Get user - try user_id first, then fall back to id for old users
-    user_id = session_doc.get("user_id")
-    user_doc = await db.users.find_one(
-        {"$or": [{"user_id": user_id}, {"id": user_id}]},
-        {"_id": 0}
-    )
-    
-    if not user_doc:
-        return None
-    
-    # Ensure user_id is in the response
-    if "user_id" not in user_doc and "id" in user_doc:
-        user_doc["user_id"] = user_doc["id"]
-    
-    return user_doc
 
 @router.post("/session")
 async def exchange_session(x_session_id: str = Header(..., alias="X-Session-ID")):
@@ -106,61 +113,72 @@ async def exchange_session(x_session_id: str = Header(..., alias="X-Session-ID")
         
         if not all([email, session_token]):
             logger.error(f"Incomplete auth data: email={email}, session_token={bool(session_token)}")
-            raise HTTPException(status_code=400, detail="Incomplete auth data")
+            raise HTTPException(status_code=400, detail="Incomplete auth data from auth service")
         
-        # Check if user exists
-        existing_user = await db.users.find_one({"email": email}, {"_id": 0})
+        logger.info(f"Processing session for email: {email}")
         
-        if existing_user:
-            # Get user_id - handle both old format (id) and new format (user_id)
-            user_id = existing_user.get("user_id") or existing_user.get("id")
+        try:
+            # Check if user exists
+            user_resp = db.table("users").select("*").eq("email", email).limit(1).execute()
+            existing_user = user_resp.data[0] if user_resp.data else None
             
-            if not user_id:
-                # Generate new user_id if neither exists
-                user_id = f"user_{uuid.uuid4().hex[:12]}"
-            
-            # Update existing user with new format
-            await db.users.update_one(
-                {"email": email},
-                {"$set": {
+            if existing_user:
+                logger.info(f"Found existing user: {email}")
+                # Get user_id - handle both old format (id) and new format (user_id)
+                user_id = existing_user.get("user_id") or existing_user.get("id")
+                
+                if not user_id:
+                    # Generate new user_id if neither exists
+                    user_id = f"user_{uuid.uuid4().hex[:12]}"
+                
+                # Update existing user
+                db.table("users").update({
                     "user_id": user_id,
                     "name": name,
                     "picture": picture
-                }}
+                }).eq("email", email).execute()
+            else:
+                logger.info(f"Creating new user: {email}")
+                # Create new user
+                user = User(email=email, name=name, picture=picture)
+                user_dict = user.model_dump()
+                # Pydantic v2 model_dump can return datetimes, Supabase handles them or we convert
+                user_dict["created_at"] = user_dict["created_at"].isoformat()
+                db.table("users").insert(user_dict).execute()
+                user_id = user.user_id
+            
+            # Create session
+            expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+            session = UserSession(
+                user_id=user_id,
+                session_token=session_token,
+                expires_at=expires_at
             )
-        else:
-            # Create new user
-            user = User(email=email, name=name, picture=picture)
-            user_dict = user.model_dump()
-            user_dict["created_at"] = user_dict["created_at"].isoformat()
-            await db.users.insert_one(user_dict)
-            user_id = user.user_id
-        
-        # Create session
-        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-        session = UserSession(
-            user_id=user_id,
-            session_token=session_token,
-            expires_at=expires_at
-        )
-        
-        session_dict = session.model_dump()
-        session_dict["expires_at"] = session_dict["expires_at"].isoformat()
-        session_dict["created_at"] = session_dict["created_at"].isoformat()
-        
-        # Delete old sessions for this user
-        await db.user_sessions.delete_many({"user_id": user_id})
-        
-        # Insert new session
-        await db.user_sessions.insert_one(session_dict)
-        
-        # Get updated user data
-        user_doc = await db.users.find_one({"email": email}, {"_id": 0})
-        
-        return {
-            "session_token": session_token,
-            "user": user_doc
-        }
+            
+            session_dict = session.model_dump()
+            session_dict["expires_at"] = session_dict["expires_at"].isoformat()
+            session_dict["created_at"] = session_dict["created_at"].isoformat()
+            
+            logger.info(f"Establishing session for user_id: {user_id}")
+            # Delete old sessions for this user
+            db.table("user_sessions").delete().eq("user_id", user_id).execute()
+            
+            # Insert new session
+            db.table("user_sessions").insert(session_dict).execute()
+            
+            # Get updated user data
+            user_doc_resp = db.table("users").select("*").eq("email", email).limit(1).execute()
+            user_doc = user_doc_resp.data[0] if user_doc_resp.data else {}
+            if 'id' in user_doc:
+                del user_doc['id']
+            
+            return {
+                "session_token": session_token,
+                "user": user_doc
+            }
+        except Exception as db_err:
+            logger.error(f"Database error during session exchange: {db_err}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
         
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Auth service timeout")
@@ -190,7 +208,10 @@ async def logout(request: Request, response: Response):
     session_token = request.cookies.get("session_token")
     
     if session_token:
-        await db.user_sessions.delete_many({"session_token": session_token})
+        try:
+            db.table("user_sessions").delete().eq("session_token", session_token).execute()
+        except Exception as e:
+            logger.error(f"Error logging out: {e}")
     
     # Clear cookie
     response.delete_cookie("session_token", path="/")
