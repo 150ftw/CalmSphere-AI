@@ -420,8 +420,8 @@ const Landing = () => {
                 <p>"Calmi is more than a bot. It's a mirror for your rhythm. And we're here to listen to every beat."</p>
               </div>
               <div className="mt-16">
-                <div className="text-xl font-bold italic text-primary">Shivam Sharma</div>
-                <div className="text-[10px] font-black tracking-widest uppercase text-primary/20 mt-2">Founder, CalmSphere AI</div>
+                <div className="text-xl font-bold italic text-primary">Founder @ CalmSphere AI</div>
+                <div className="text-[10px] font-black tracking-widest uppercase text-primary/30 mt-2">The Sanctuary Vision</div>
               </div>
             </div>
           </div>
