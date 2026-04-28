@@ -73,10 +73,21 @@ export default function Chat() {
     }
   };
 
-  // Voice Logic
   useEffect(() => {
+    if (!isCalling) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      synthesisRef.current.cancel();
+      return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition is not supported in this browser.");
+      setIsCalling(false);
+      return;
+    }
+
+    try {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -93,30 +104,42 @@ export default function Chat() {
         }
       };
 
-      recognition.onstart = () => setIsListening(true);
+      recognition.onstart = () => {
+        setIsListening(true);
+        console.log("Voice recognition started");
+      };
+      
+      recognition.onerror = (event) => {
+        console.error("Speech Recognition Error:", event.error);
+        if (event.error === 'not-allowed') {
+          toast.error("Microphone permission denied.");
+          setIsCalling(false);
+        }
+      };
+
       recognition.onend = () => {
         setIsListening(false);
         // Restart if still calling and not speaking
-        if (isCalling && !synthesisRef.current.speaking) {
-          recognition.start();
+        if (isCalling && !synthesisRef.current.speaking && !isMuted) {
+          try { recognition.start(); } catch(e) {}
         }
       };
 
       recognitionRef.current = recognition;
+      recognition.start();
+    } catch (error) {
+      console.error("Failed to start recognition:", error);
+      setIsCalling(false);
     }
 
     return () => {
       if (recognitionRef.current) recognitionRef.current.stop();
       synthesisRef.current.cancel();
     };
-  }, [isCalling, sessionId]);
+  }, [isCalling, sessionId, isMuted]);
 
   const startCall = () => {
     setIsCalling(true);
-    if (recognitionRef.current) {
-      recognitionRef.current.start();
-    }
-    toast.success('Voice session started');
   };
 
   const endCall = () => {
@@ -315,7 +338,7 @@ export default function Chat() {
             </div>
             
             <p className="voice-status-text min-h-[3rem]">
-              {loading ? "CalmSphere is thinking..." : (transcript || (isListening ? "I'm listening..." : "Speaking..."))}
+              {loading ? "CalmSphere is thinking..." : (transcript || (isListening ? "I'm listening..." : (isCalling && !isListening ? "Initializing..." : "Speaking...")))}
             </p>
             <p className="voice-subtext mt-4">
               {isMuted ? "Microphone is muted" : "Speak naturally, I can hear you."}
