@@ -78,11 +78,11 @@ export default function Onboarding() {
                 <Compass className="w-8 h-8 text-secondary" />
               </div>
               <h2 className="font-fraunces text-5xl md:text-6xl mb-6 italic">Calibration.</h2>
-              <p className="text-xl text-primary/40 leading-relaxed font-fraunces mb-16">Tell us about your current path so we can mirror your rhythm.</p>
+              <p className="text-xl text-primary/70 leading-relaxed font-fraunces mb-16">Tell us about your current path so we can mirror your rhythm.</p>
 
               <div className="space-y-10">
                 <div>
-                  <label className="text-[9px] font-black tracking-[0.3em] uppercase text-primary/30 block mb-4">Academic Year</label>
+                  <label className="text-[9px] font-black tracking-[0.3em] uppercase text-primary/70 block mb-4">Academic Year</label>
                   <Input
                     data-testid="year-input"
                     value={formData.year}
@@ -93,7 +93,7 @@ export default function Onboarding() {
                 </div>
 
                 <div>
-                  <label className="text-[9px] font-black tracking-[0.3em] uppercase text-primary/30 block mb-4">Field of Study</label>
+                  <label className="text-[9px] font-black tracking-[0.3em] uppercase text-primary/70 block mb-4">Field of Study</label>
                   <Input
                     data-testid="branch-input"
                     value={formData.branch}
@@ -121,7 +121,7 @@ export default function Onboarding() {
                 <Waves className="w-8 h-8 text-secondary" />
               </div>
               <h2 className="font-fraunces text-5xl md:text-6xl mb-6 italic">The Pulse.</h2>
-              <p className="text-xl text-primary/40 leading-relaxed font-fraunces mb-12">What frequencies have you been feeling lately?</p>
+              <p className="text-xl text-primary/70 leading-relaxed font-fraunces mb-12">What frequencies have you been feeling lately?</p>
 
               <div className="grid grid-cols-2 gap-4 mb-16">
                 {CONCERNS.map((concern) => (
@@ -164,7 +164,7 @@ export default function Onboarding() {
               <h2 className="font-fraunces text-5xl md:text-6xl mb-6 italic">Trust.</h2>
               
               <div className="bg-primary/5 rounded-[3rem] p-10 mb-12 border border-primary/5">
-                <h3 className="text-[10px] font-black tracking-widest uppercase text-primary/30 mb-8 italic">— Sanctuary Protocol</h3>
+                <h3 className="text-[10px] font-black tracking-widest uppercase text-primary/60 mb-8 italic">— Sanctuary Protocol</h3>
                 <ul className="space-y-6">
                   {[
                     "Supportive tool, not a clinical replacement.",

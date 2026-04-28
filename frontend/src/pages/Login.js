@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { Sparkles, ArrowLeft, ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 import { Input } from '../components/ui/input';
-import { GoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -30,6 +29,30 @@ export default function Login() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  // Initialize Native Google Sign-In
+  useEffect(() => {
+    const initGoogle = () => {
+      if (window.google && !isRegister) {
+        window.google.accounts.id.initialize({
+          client_id: "935921317184-at852s89dj1om80ea6vencbj260nmt8j.apps.googleusercontent.com",
+          callback: handleGoogleSuccess
+        });
+        
+        const googleBtn = document.getElementById("googleSignInDiv");
+        if (googleBtn) {
+          window.google.accounts.id.renderButton(
+            googleBtn,
+            { theme: "outline", size: "large", shape: "pill", width: "320" }
+          );
+        }
+      }
+    };
+
+    // Give the script a moment to load if it hasn't yet
+    const timer = setTimeout(initGoogle, 500);
+    return () => clearTimeout(timer);
+  }, [isRegister]);
 
   // If user already logged in, redirect to dashboard
   useEffect(() => {
@@ -111,15 +134,7 @@ export default function Login() {
 
           {!isRegister && (
             <div className="flex justify-center mb-10 relative z-10 scale-110">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => toast.error("Google authentication failed")}
-                useOneTap
-                theme="outline"
-                shape="pill"
-                size="large"
-                width="320"
-              />
+              <div id="googleSignInDiv"></div>
             </div>
           )}
 

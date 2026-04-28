@@ -329,11 +329,11 @@ const Landing = () => {
               <div className="grid grid-cols-2 gap-10 border-t border-white/10 pt-12">
                 <div>
                   <div className="text-4xl font-fraunces text-secondary mb-2">99.8%</div>
-                  <div className="text-[9px] font-black tracking-widest uppercase text-white/20">Pattern Accuracy</div>
+                  <div className="text-[9px] font-black tracking-widest uppercase text-white/60">Pattern Accuracy</div>
                 </div>
                 <div>
                   <div className="text-4xl font-fraunces text-secondary mb-2">40ms</div>
-                  <div className="text-[9px] font-black tracking-widest uppercase text-white/20">Response Latency</div>
+                  <div className="text-[9px] font-black tracking-widest uppercase text-white/60">Response Latency</div>
                 </div>
               </div>
               <button 
@@ -347,7 +347,7 @@ const Landing = () => {
               <div className="luxury-card bg-white/5 border-white/10 p-12 aspect-square flex flex-col justify-center gap-12">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="space-y-4">
-                    <div className="flex justify-between text-[10px] font-black tracking-widest uppercase text-white/30">
+                    <div className="flex justify-between text-[11px] font-black tracking-[0.2em] uppercase text-white/90">
                       <span>Neural Rhythm {i + 1}</span>
                       <span>{Math.floor(Math.random() * 40) + 60}%</span>
                     </div>
